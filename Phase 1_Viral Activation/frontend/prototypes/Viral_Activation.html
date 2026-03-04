@@ -1918,6 +1918,17 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 @keyframes btnGlare{0%{left:-100%}60%,100%{left:150%}}
 .spin-big-btn.disabled{background:rgba(255,255,255,.06);color:var(--gr);box-shadow:none;animation:none;cursor:not-allowed;}
 .spin-big-btn.disabled::after{display:none;}
+.spin-big-btn.disabled{
+  width:auto;
+  max-width:238px;
+  padding:9px 14px;
+  font-size:11.5px;
+  letter-spacing:.9px;
+  border-radius:28px;
+  gap:6px;
+}
+.spin-big-btn.disabled .spin-big-btn-ico{font-size:14px;}
+#spinBigBtnTxt{white-space:nowrap;}
 .spin-big-btn-ico{font-size:18px;}
 
 .spin-result-msg{
