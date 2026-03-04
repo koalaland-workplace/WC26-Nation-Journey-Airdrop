@@ -258,7 +258,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 @keyframes sup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .qdiff{font-family:'Montserrat',sans-serif;font-size:8.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:4px;margin-bottom:5px;}
 .de{color:var(--g);}.dm{color:var(--y);}.dh{color:var(--rd);}
-.qtext{font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;color:var(--pw);line-height:1.35;}
+.qtext{font-family:'Montserrat',sans-serif;font-size:12.75px;font-weight:700;color:var(--pw);line-height:1.35;}
 .trow{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
 .tring{width:37px;height:37px;flex-shrink:0;position:relative;}
 .tring svg{transform:rotate(-90deg);}
@@ -1252,27 +1252,355 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 
 .home-legacy-cache{display:none;}
 
-.info-sec .info-head{
-  font-family:var(--font-display);font-size:12px;font-weight:600;color:var(--pw);margin-bottom:6px;
+.info-top{text-align:center;padding:10px 0 8px;}
+.info-section{margin-bottom:10px;}
+.info-section.hidden{display:none !important;}
+
+.info-tab-row{
+  display:flex;
+  gap:6px;
+  margin-bottom:12px;
+  overflow-x:auto;
+  justify-content:center;
+  align-items:center;
+  padding:1px 0 5px;
+  scrollbar-width:none;
 }
-.info-list{display:grid;gap:6px;font-size:10px;color:var(--c-gray);}
-.info-list .info-item{
-  padding:8px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+.info-tab-row::-webkit-scrollbar{display:none;}
+.info-tab-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  text-align:center;
+  white-space:nowrap;
+  padding:8px 12px;
+  background:var(--bg3);
+  border:1px solid var(--br2);
+  border-radius:20px;
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--gr);
+  cursor:pointer;
+  transition:all .16s;
 }
-.info-sublink{
-  margin-top:8px;font-size:10px;color:var(--c-blue);font-weight:600;cursor:pointer;
-}
-.info-ai-wrap{display:flex;gap:6px;margin-top:6px;}
-.info-ai-input{
-  flex:1;border-radius:8px;border:1px solid rgba(255,255,255,.18);
-  background:rgba(14,26,36,.8);padding:10px;color:var(--pw);
-  font-family:var(--font-body);font-size:11px;
-}
-.info-ai-log{
-  margin-top:8px;font-size:10px;color:var(--c-gray);
-  padding:8px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+.info-tab-btn.active{
+  background:linear-gradient(135deg,var(--c-green),var(--c-yellow));
+  color:#0e1a24;
+  border-color:transparent;
+  box-shadow:0 7px 16px rgba(245,197,66,.24);
 }
 
+.info-sec .info-head{
+  font-family:var(--font-display);
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--pw);
+  margin-bottom:8px;
+}
+
+.group-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.group-pill{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:10px;
+  padding:5px 9px;
+  border-radius:20px;
+  border:1px solid var(--br2);
+  background:rgba(255,255,255,.04);
+  color:var(--gr);
+  cursor:pointer;
+  transition:all .15s;
+  min-width:30px;
+  text-align:center;
+  letter-spacing:.3px;
+}
+.group-pill:hover{background:rgba(31,191,106,.1);border-color:rgba(31,191,106,.4);color:var(--c-green);}
+.group-pill.active{background:linear-gradient(135deg,rgba(31,191,106,.25),rgba(245,197,66,.15));border-color:var(--c-green);color:var(--c-green);box-shadow:0 0 8px rgba(31,191,106,.24);}
+.group-pill.knockout{background:rgba(245,197,66,.05);border-color:rgba(245,197,66,.2);color:rgba(245,197,66,.6);font-size:9px;padding:5px 8px;}
+.group-pill.knockout:hover{background:rgba(245,197,66,.1);border-color:rgba(245,197,66,.42);color:var(--c-yellow);}
+.group-pill.knockout.active{background:linear-gradient(135deg,rgba(245,197,66,.2),rgba(245,197,66,.08));border-color:rgba(245,197,66,.6);color:var(--c-yellow);box-shadow:0 0 8px rgba(245,197,66,.2);}
+
+.group-card{background:var(--bg3);border:1px solid var(--br2);border-radius:12px;margin-bottom:9px;overflow:hidden;}
+.group-card.hidden-group{display:none;}
+.group-header{background:rgba(255,255,255,.04);padding:10px 12px;font-family:var(--font-display);font-weight:700;font-size:11px;color:var(--c-yellow);letter-spacing:.4px;}
+.group-team{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--br);font-size:11px;color:var(--c-white);}
+.group-team-flag{font-size:15px;}
+.group-team-name{flex:1;font-weight:500;}
+.group-team-rank{font-family:var(--font-mono);font-size:9px;color:var(--c-gray);}
+
+.knockout-card{background:var(--bg3);border:1px solid var(--br2);border-radius:12px;margin-bottom:9px;overflow:hidden;display:none;}
+.knockout-card.ko-visible{display:block;}
+.knockout-header{display:flex;align-items:center;gap:8px;padding:10px 12px;font-family:var(--font-display);font-weight:800;font-size:11px;color:var(--c-white);border-bottom:1px solid var(--br2);background:linear-gradient(90deg,rgba(229,57,53,.12),transparent);}
+.knockout-badge{width:24px;height:24px;border-radius:8px;background:rgba(229,57,53,.18);border:1px solid rgba(229,57,53,.3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.knockout-match{display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid var(--br);font-size:9.8px;}
+.knockout-match:last-child{border-bottom:none;}
+.ko-slot{font-size:8.5px;color:var(--c-gray);font-weight:700;font-family:var(--font-mono);min-width:22px;flex-shrink:0;}
+.ko-teams{flex:1;color:var(--c-white);font-weight:600;}
+.ko-teams .tbd{color:var(--c-gray);font-style:italic;font-size:9px;}
+.ko-info{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0;min-width:80px;}
+.ko-date{color:var(--c-yellow);font-family:var(--font-mono);font-size:8.6px;}
+.ko-venue{color:var(--c-gray);font-size:8px;text-align:right;}
+
+.info-lead-links{margin-top:10px;padding-top:8px;border-top:1px solid var(--br2);}
+.info-list{display:grid;gap:6px;font-size:10px;color:var(--c-gray);}
+.info-list .info-item{padding:8px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);}
+
+#page-info .pulse-feed{display:flex;flex-direction:column;gap:8px;background:transparent;}
+#page-info .pulse-post{margin:0;border-radius:10px;border:1px solid var(--br2);background:var(--bg3);padding:10px;}
+#page-info .pulse-main{padding-top:8px;}
+
+#page-info .rules-doc{font-size:11px;color:var(--c-gray);line-height:1.65;text-align:left;}
+#page-info .rules-sec{margin-bottom:14px;}
+#page-info .rules-h{font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--c-yellow);margin-bottom:6px;}
+#page-info .rules-subh{font-size:10px;}
+#page-info .rules-box{padding:8px;}
+#page-info .rules-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:10px;}
+#page-info .rules-table th,#page-info .rules-table td{padding:6px 6px;border-bottom:1px solid var(--br2);}
+#page-info .rules-table th{color:var(--c-gray);font-size:9.5px;}
+#page-info .rules-table td{color:var(--c-white);}
+
+.ai-bot-box{background:linear-gradient(135deg,rgba(30,136,229,.14),rgba(229,57,53,.08));border:1px solid rgba(30,136,229,.3);border-radius:14px;padding:12px;}
+.ai-bot-title{font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--c-white);margin-bottom:2px;}
+.ai-bot-sub{font-size:10px;color:var(--c-gray);margin-bottom:8px;}
+.ai-input-row{display:flex;gap:8px;}
+.ai-input{flex:1;background:rgba(14,26,36,.86);border:1px solid var(--br2);border-radius:8px;padding:10px;color:var(--pw);font-family:var(--font-body);font-size:11px;}
+.ai-input::placeholder{color:var(--c-gray);}
+.ai-response{margin-top:8px;padding:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:10px;color:var(--c-gray);line-height:1.55;display:none;}
+.ai-response.show{display:block;}
+
+/* ── SPIN (REFRESHED FROM WC26_MiniApp) ── */
+.spin-cta{
+  position:relative;
+  border-radius:var(--r);
+  overflow:hidden;
+  margin-bottom:10px;
+  padding:15px 14px;
+  background:linear-gradient(135deg,#0d2518 0%,#0e1a24 54%,#1a1500 100%);
+  border:1px solid rgba(31,191,106,.25);
+  cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.spin-cta:active{transform:scale(.98);}
+.spin-cta::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse at 60% 50%,rgba(245,197,66,.1) 0%,transparent 70%);
+  pointer-events:none;
+}
+.spin-cta-inner{position:relative;z-index:1;display:flex;align-items:center;gap:14px;}
+.spin-mini-wheel{position:relative;width:68px;height:68px;flex-shrink:0;}
+.spin-mini-svg{width:68px;height:68px;animation:slowSpin 20s linear infinite;}
+@keyframes slowSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spin-mini-pointer{
+  position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:12px;z-index:2;
+  filter:drop-shadow(0 0 4px rgba(245,197,66,.8));
+}
+.spin-mini-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;}
+.spin-mini-center-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--y);background:var(--bg);}
+.spin-cta-text{flex:1;min-width:0;}
+.spin-cta-badge{
+  display:flex;align-items:center;gap:4px;margin-bottom:3px;
+  font-family:var(--font-body);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--g);
+}
+.spin-cta-badge::before{
+  content:'';
+  width:6px;height:6px;border-radius:50%;background:var(--g);animation:blink 1s ease-in-out infinite;
+}
+.spin-cta-title{font-family:var(--font-display);font-weight:800;font-size:17px;color:var(--pw);margin-bottom:3px;line-height:1.1;}
+.spin-cta-sub{font-family:var(--font-body);font-size:11px;color:var(--gr);margin-bottom:8px;}
+.spin-cta-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font-body);font-weight:700;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;
+  padding:8px 16px;border-radius:10px;
+  background:linear-gradient(135deg,var(--g),var(--y));color:#0e1a24;
+  box-shadow:0 0 16px rgba(245,197,66,.32),0 4px 12px rgba(31,191,106,.25);
+}
+.spin-done-msg{font-size:10px;color:var(--gr);font-style:italic;}
+
+.spin-page-wrap{
+  position:relative;
+  overflow:hidden;
+  border-radius:var(--r);
+  border:1px solid rgba(31,191,106,.14);
+  padding:16px 12px 16px;
+  margin-bottom:10px;
+  background:radial-gradient(ellipse at 50% 30%,#0d2a1a 0%,#0e1a24 58%,#050e18 100%);
+}
+.spin-page-wrap::before{
+  content:'';
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 20% 0%,rgba(30,136,229,.08) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 100%,rgba(31,191,106,.06) 0%,transparent 50%);
+}
+.spin-page-title{
+  position:relative;z-index:1;
+  text-align:center;
+  font-family:var(--font-display);font-weight:800;font-size:18px;letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:2px;
+  background:linear-gradient(135deg,var(--g),var(--y),var(--g));
+  background-size:200%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:shimmer 3s linear infinite;
+}
+@keyframes shimmer{0%{background-position:0%}100%{background-position:200%}}
+.spin-page-sub{
+  position:relative;z-index:1;
+  text-align:center;
+  color:var(--gr);font-size:11px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.spin-live-dot{width:6px;height:6px;border-radius:50%;background:var(--g);animation:blink 1s ease-in-out infinite;flex-shrink:0;}
+
+.spin-stats-strip{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;
+}
+.spin-stat-pill{
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--br2);
+  border-radius:10px;
+  padding:9px 5px;
+  text-align:center;
+}
+.spin-stat-pill-num{font-family:var(--font-mono);font-weight:500;font-size:18px;color:var(--y);line-height:1;}
+.spin-stat-pill-lbl{font-size:9px;color:var(--gr);margin-top:3px;letter-spacing:.3px;}
+
+.spin-stage{position:relative;width:290px;height:290px;max-width:100%;margin:0 auto;}
+.spin-outer-ring{
+  position:absolute;inset:-6px;border-radius:50%;opacity:.7;filter:blur(2px);
+  background:conic-gradient(#1fbf6a 0deg,#00e676 40deg,#1e88e5 80deg,#00b0ff 130deg,#1fbf6a 180deg,#00e676 220deg,#1e88e5 270deg,#00b0ff 320deg,#1fbf6a 360deg);
+  animation:ringRotate 4s linear infinite;
+}
+@keyframes ringRotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spin-outer-ring-mask{position:absolute;inset:-5px;border-radius:50%;border:10px solid var(--bg);background:transparent;z-index:1;}
+#spinCanvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  z-index:2;
+  cursor:pointer;
+}
+.spin-pointer-arrow{
+  position:absolute;top:-2px;left:50%;transform:translateX(-50%);
+  z-index:10;width:0;height:0;
+  border-left:10px solid transparent;border-right:10px solid transparent;border-top:22px solid var(--y);
+  filter:drop-shadow(0 0 6px rgba(245,197,66,1)) drop-shadow(0 0 12px rgba(245,197,66,.6));
+}
+.spin-center-zone{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:8;pointer-events:none;}
+.spin-ball-btn{
+  width:72px;height:72px;border-radius:50%;position:relative;overflow:hidden;pointer-events:all;cursor:pointer;
+  background:radial-gradient(circle at 35% 30%,#fff 0%,#e8e8e8 30%,#c0c0c0 60%,#888 100%);
+  border:3px solid rgba(255,255,255,.3);
+  box-shadow:0 0 0 4px rgba(31,191,106,.4),0 0 0 8px rgba(31,191,106,.15),0 0 20px rgba(31,191,106,.5),0 0 40px rgba(30,136,229,.3),inset 0 2px 4px rgba(255,255,255,.6);
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+.spin-ball-btn::before{
+  content:'⚽';
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:36px;text-shadow:0 2px 4px rgba(0,0,0,.28);
+}
+.spin-ball-btn:active{transform:scale(.92);}
+.spin-ball-pulse{animation:ballPulse 2s ease-in-out infinite;}
+@keyframes ballPulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(31,191,106,.4),0 0 0 8px rgba(31,191,106,.15),0 0 20px rgba(31,191,106,.5),0 0 40px rgba(30,136,229,.3),inset 0 2px 4px rgba(255,255,255,.6);}
+  50%{box-shadow:0 0 0 6px rgba(31,191,106,.6),0 0 0 14px rgba(31,191,106,.2),0 0 30px rgba(31,191,106,.7),0 0 60px rgba(30,136,229,.4),inset 0 2px 4px rgba(255,255,255,.6);}
+}
+.spin-ball-label{
+  position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
+  font-family:var(--font-body);font-weight:700;font-size:9px;letter-spacing:1.5px;color:var(--y);text-transform:uppercase;
+  white-space:nowrap;text-shadow:0 0 8px rgba(245,197,66,.8);
+}
+.spin-big-btn{
+  position:relative;z-index:1;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  width:100%;max-width:290px;margin:22px auto 0;padding:14px 20px;border:none;border-radius:50px;
+  background:linear-gradient(135deg,var(--g) 0%,var(--y) 50%,var(--g) 100%);
+  background-size:200%;
+  font-family:var(--font-display);font-weight:800;font-size:15px;letter-spacing:1.4px;text-transform:uppercase;color:#0e1a24;
+  box-shadow:0 4px 20px rgba(31,191,106,.4),0 8px 40px rgba(245,197,66,.2),inset 0 1px 0 rgba(255,255,255,.3);
+  cursor:pointer;
+  animation:btnShimmer 2s linear infinite;
+}
+.spin-big-btn:active{transform:scale(.97);}
+.spin-big-btn::after{
+  content:'';
+  position:absolute;top:0;left:-100%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);
+  animation:btnGlare 2.5s ease-in-out infinite;
+}
+@keyframes btnShimmer{0%{background-position:0%}100%{background-position:200%}}
+@keyframes btnGlare{0%{left:-100%}60%,100%{left:150%}}
+.spin-big-btn.disabled{background:rgba(255,255,255,.06);color:var(--gr);box-shadow:none;animation:none;cursor:not-allowed;}
+.spin-big-btn.disabled::after{display:none;}
+.spin-big-btn-ico{font-size:18px;}
+
+.spin-result-msg{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(66,211,255,.24);
+  background:linear-gradient(145deg,rgba(0,20,35,.82),rgba(8,23,34,.9));
+  color:#dde7f3;
+  font-size:12px;
+  line-height:1.4;
+  text-align:center;
+  position:relative;
+  z-index:1;
+}
+.spin-result-msg.good{
+  border-color:rgba(88,231,156,.48);
+  background:linear-gradient(145deg,rgba(0,48,36,.7),rgba(5,28,24,.86));
+  color:#dfffe9;
+}
+
+.spin-boost-row{
+  position:relative;
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--br2);
+  border-radius:var(--r);
+  padding:12px;
+  margin-bottom:10px;
+}
+.spin-boost-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:12px;
+  color:var(--pw);
+  margin-bottom:8px;
+}
+.spin-boost-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:9px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+.spin-boost-item:last-child{border-bottom:none;}
+.spin-boost-lbl{font-size:11px;color:var(--gr);}
+.spin-boost-status{
+  border:none;
+  border-radius:20px;
+  padding:4px 10px;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.3px;
+  white-space:nowrap;
+}
+.sbs-done{background:rgba(31,191,106,.15);color:var(--g);border:1px solid rgba(31,191,106,.3);}
+.sbs-todo{
+  background:linear-gradient(135deg,rgba(245,197,66,.15),rgba(31,191,106,.1));
+  color:var(--y);
+  border:1px solid rgba(245,197,66,.3);
+  cursor:pointer;
+}
+.sbs-todo:disabled{opacity:.5;cursor:not-allowed;}
+.hidden{display:none !important;}
 .confetti{
   position:fixed;inset:0;pointer-events:none;z-index:180;overflow:hidden;
 }
@@ -1352,29 +1680,36 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="home-fans">👥 <span id="home-live-fans">243,182</span> fans playing now</div>
   </div>
 
-  <div class="card acc-y home-spin-cta" id="home-spin-cta" onclick="goSpinFromHome()">
-    <div class="home-spin-head">
-      <div class="home-sec-title">🎯 FREE SPIN READY</div>
-      <div class="home-spin-tag">MATCHDAY BONUS</div>
-    </div>
-    <div class="home-spin-scene">
-      <div class="home-spin-preview">
-        <div class="home-spin-wheel-wrap">
-          <div class="home-spin-pointer"></div>
-          <div class="home-spin-wheel"></div>
-        </div>
+  <div class="card acc-y spin-cta" id="homeSpinCta" onclick="goSpinFromHome()">
+    <div class="spin-cta-inner">
+      <div class="spin-mini-wheel">
+        <span class="spin-mini-pointer">▼</span>
+        <svg class="spin-mini-svg" viewBox="0 0 68 68">
+          <defs><clipPath id="homeSpinWheelClip"><circle cx="34" cy="34" r="32"/></clipPath></defs>
+          <g clip-path="url(#homeSpinWheelClip)">
+            <path d="M34,34 L34.0,2.0 A32,32 0 0,1 59.0,14.0 Z" fill="#1FBF6A" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+            <path d="M34,34 L59.0,14.0 A32,32 0 0,1 65.2,41.1 Z" fill="#E5A020" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+            <path d="M34,34 L65.2,41.1 A32,32 0 0,1 47.9,62.8 Z" fill="#1a1a2a" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+            <path d="M34,34 L47.9,62.8 A32,32 0 0,1 20.1,62.8 Z" fill="#1E88E5" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+            <path d="M34,34 L20.1,62.8 A32,32 0 0,1 2.8,41.1 Z" fill="#AB47BC" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+            <path d="M34,34 L2.8,41.1 A32,32 0 0,1 9.0,14.0 Z" fill="#26C6DA" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+            <path d="M34,34 L9.0,14.0 A32,32 0 0,1 34.0,2.0 Z" fill="#E5A020" opacity="0.92" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+          </g>
+          <circle cx="34" cy="34" r="32" fill="none" stroke="rgba(245,197,66,0.4)" stroke-width="1.5"/>
+        </svg>
+        <div class="spin-mini-center"><div class="spin-mini-center-dot"></div></div>
+      </div>
+      <div class="spin-cta-text">
+        <div class="spin-cta-badge">FREE SPIN READY</div>
+        <div class="spin-cta-title">🎯 Daily Spin</div>
+        <div class="spin-cta-sub" id="homeSpinSub">Win 50-200 KICK + boosts</div>
+        <div id="homeSpinBtnWrap"><div class="spin-cta-btn">⚡ SPIN NOW</div></div>
       </div>
     </div>
-    <div class="home-spin-sub">Tap to spin - 50-200 KICK + boosts</div>
-    <div class="home-spin-rewards">
-      <span class="home-spin-chip">50-200 KICK</span>
-      <span class="home-spin-chip">BOOSTS</span>
-      <span class="home-spin-chip">LUCKY DROP</span>
-    </div>
-    <button class="btn b-y" onclick="event.stopPropagation();goSpinFromHome()">SPIN NOW</button>
   </div>
 
   <div class="home-quick">
+
     <div class="card acc-g home-quick-card">
       <div class="home-quick-head">⚽ Penalty Challenge</div>
       <div class="home-quick-sub" id="home-pen-free">3 Free Left</div>
@@ -1808,98 +2143,79 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 
 <!-- ══════════ DAILY LUCKY SPIN ══════════ -->
 <div id="page-spin" class="pg">
-  <div class="spin-top">
-    <div class="spin-title">DAILY LUCKY SPIN</div>
-    <div class="spin-sub">🎯 1 free spin/day · invite/share to unlock more spins · cap 10 spins/day</div>
+  <div class="spin-page-wrap">
+    <div class="spin-pop" id="spin-pop">Reward ready.</div>
+    <div class="spin-fx" id="spin-fx"></div>
+
+    <div class="spin-page-title">⚡ Daily Lucky Spin</div>
+    <div class="spin-page-sub">
+      <span class="spin-live-dot"></span>
+      <span id="spinSubtitle">1 Free Spin Ready</span>
+    </div>
+
+    <div class="spin-stats-strip">
+      <div class="spin-stat-pill">
+        <div class="spin-stat-pill-num" id="spinStatLeft">1</div>
+        <div class="spin-stat-pill-lbl">Spins Left</div>
+      </div>
+      <div class="spin-stat-pill">
+        <div class="spin-stat-pill-num" id="spinStatDone">10</div>
+        <div class="spin-stat-pill-lbl">Today Cap</div>
+      </div>
+      <div class="spin-stat-pill">
+        <div class="spin-stat-pill-num" id="spin-ticket-count">0</div>
+        <div class="spin-stat-pill-lbl">Rising Tickets</div>
+      </div>
+    </div>
+
+    <div class="spin-stage" id="spinStage">
+      <div class="spin-outer-ring"></div>
+      <div class="spin-outer-ring-mask"></div>
+      <canvas id="spinCanvas" width="290" height="290" onclick="spinRoll()"></canvas>
+      <div class="spin-pointer-arrow"></div>
+      <div class="spin-center-zone">
+        <div style="position:relative;">
+          <div class="spin-ball-btn spin-ball-pulse" id="spinBallBtn" onclick="spinRoll()"></div>
+          <div class="spin-ball-label">TAP TO SPIN</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="spin-big-btn" id="spinBigBtn" onclick="spinRoll()">
+      <span class="spin-big-btn-ico">⚽</span>
+      <span id="spinBigBtnTxt">SPIN NOW</span>
+    </button>
+
+    <div class="spin-result-msg" id="spin-result">Spin to claim reward and activate boost.</div>
   </div>
 
-  <div class="spin-card">
-  <div class="spin-pop" id="spin-pop">Reward ready.</div>
-    <div class="spin-fx" id="spin-fx"></div>
-    <div class="spin-wheel-wrap">
-      <div class="spin-pointer"></div>
-      <div class="spin-wheel-shell">
-        <div class="spin-wheel" id="spin-wheel">
-          <div class="spin-wheel-face"></div>
-          <div class="spin-sep" style="--b:0deg"></div>
-          <div class="spin-sep" style="--b:51.428deg"></div>
-          <div class="spin-sep" style="--b:102.856deg"></div>
-          <div class="spin-sep" style="--b:154.284deg"></div>
-          <div class="spin-sep" style="--b:205.712deg"></div>
-          <div class="spin-sep" style="--b:257.14deg"></div>
-          <div class="spin-sep" style="--b:308.568deg"></div>
+  <div class="spin-boost-row">
+    <div class="spin-boost-title">🚀 Unlock More Spins Today</div>
 
-          <div class="spin-node" style="--b:0deg"></div>
-          <div class="spin-node" style="--b:51.428deg"></div>
-          <div class="spin-node" style="--b:102.856deg"></div>
-          <div class="spin-node" style="--b:154.284deg"></div>
-          <div class="spin-node" style="--b:205.712deg"></div>
-          <div class="spin-node" style="--b:257.14deg"></div>
-          <div class="spin-node" style="--b:308.568deg"></div>
-
-          <div class="spin-seg sg-50" style="--a:334.286deg">
-            <div class="seg-title"><b>50</b><span>KICK</span></div>
-            <div class="seg-icon">🪙</div>
-          </div>
-          <div class="spin-seg sg-100" style="--a:25.714deg">
-            <div class="seg-title"><b>100</b><span>KICK</span></div>
-            <div class="seg-icon">💰</div>
-          </div>
-          <div class="spin-seg sg-200" style="--a:77.142deg">
-            <div class="seg-title"><b>200</b><span>KICK</span></div>
-            <div class="seg-icon">🪙</div>
-          </div>
-          <div class="spin-seg sg-quiz" style="--a:128.571deg">
-            <div class="seg-title"><b>2X</b><span>QUIZ TODAY</span></div>
-            <div class="seg-icon">⚽</div>
-          </div>
-          <div class="spin-seg sg-ref" style="--a:180deg">
-            <div class="seg-title"><b>3X</b><span>REFERRAL TODAY</span></div>
-            <div class="seg-icon">👥</div>
-          </div>
-          <div class="spin-seg sg-ticket" style="--a:231.429deg">
-            <div class="seg-title"><b>RISING BOX</b><span>TICKET</span></div>
-            <div class="seg-icon">🎟️</div>
-          </div>
-          <div class="spin-seg sg-none" style="--a:282.857deg">
-            <div class="seg-title"><b>NOTHING</b></div>
-            <div class="seg-icon">⚽</div>
-          </div>
-
-          <div class="spin-center">⚽</div>
-        </div>
-      </div>
-      <button class="spin-btn" id="spin-btn" onclick="spinRoll()">SPIN</button>
+    <div class="spin-boost-item">
+      <span class="spin-boost-lbl">👥 Invite 1 participant</span>
+      <button class="spin-boost-status sbs-todo" id="spin-invite-btn" onclick="spinUnlockInvite()">+1 SPIN</button>
     </div>
 
-    <div class="spin-meta">
-      <div class="spin-meta-item"><span class="lbl">Spins Left</span><span class="val" id="spin-left">1</span></div>
-      <div class="spin-meta-item"><span class="lbl">Today Cap</span><span class="val" id="spin-cap">10</span></div>
-      <div class="spin-meta-item"><span class="lbl">Rising Tickets</span><span class="val" id="spin-ticket-count">0</span></div>
+    <div class="spin-boost-item">
+      <span class="spin-boost-lbl">📣 Share WAR ranking</span>
+      <button class="spin-boost-status sbs-todo" id="spin-share-btn" onclick="spinUnlockShare()">+1 SPIN</button>
     </div>
-    <div class="spin-result" id="spin-result">Spin to claim reward and activate boost.</div>
 
-    <div class="spin-side">
-      <div class="spin-boosts">
-        <div class="spin-boost">
-          <div class="name">2x Quiz Today</div>
-          <div class="st" id="spin-quiz-boost">Inactive</div>
-        </div>
-        <div class="spin-boost">
-          <div class="name">3x Referral Today</div>
-          <div class="st" id="spin-ref-boost">Inactive</div>
-        </div>
-      </div>
-      <div class="spin-actions">
-        <button class="btn b-g" id="spin-invite-btn" onclick="spinUnlockInvite()">👥 Invite 1 participant (+1 spin)</button>
-        <button class="btn b-b" id="spin-share-btn" onclick="spinUnlockShare()">📣 Share WAR ranking (+1 spin)</button>
-      </div>
-      <div class="spin-note">Additional spins: Invite 1 participant (+1) or Share WAR ranking (+1). Total spins are capped at 10/day.</div>
+    <div class="spin-boost-item">
+      <span class="spin-boost-lbl">❓ Quiz Boost</span>
+      <span class="spin-boost-status sbs-done" id="spin-quiz-boost">Inactive</span>
+    </div>
+
+    <div class="spin-boost-item">
+      <span class="spin-boost-lbl">👥 Referral Boost</span>
+      <span class="spin-boost-status sbs-done" id="spin-ref-boost">Inactive</span>
     </div>
   </div>
 </div>
 
 <!-- ══════════ EARN / AIRDROP ══════════ -->
+
 <div id="page-earn" class="pg">
   <div class="earn-top"><div class="earn-title">🎁 Engage & Earn</div>
     <div class="earn-sub">Like. Share. Dominate. Earn KICK. Unlock allocation. Claim game rewards.<br>Total Cap: 15,000 KICK.<br>All actions subject to verification, anti-sybil screening, and compliance review.<br>Snapshot conversion details are shown on "Game Policy & Announcement".</div>
@@ -2015,54 +2331,81 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 
 <!-- ══════════ INFO HUB ══════════ -->
 <div id="page-info" class="pg">
-  <div class="earn-top">
+  <div class="info-top">
     <div class="earn-title">ℹ️ INFO HUB</div>
-    <div class="earn-sub">Game rules · Match Hub · Hot Signals · Leaderboards · AI bot preview.</div>
+    <div class="earn-sub">Match Hub · Hot Signals · Rules · Leaderboards · AI</div>
   </div>
 
-  <div class="card acc-b info-sec" id="info-match-hub">
-    <div class="info-head">🏟️ MATCH HUB</div>
-    <div class="info-list">
-      <div class="info-item"><strong style="color:var(--pw)">World Cup 2026 Groups</strong><br>Group A: USA, Mexico, Japan, Senegal</div>
-      <div class="info-item"><strong style="color:var(--pw)">Match Schedule</strong><br>Opening Match: June 11, 2026 · 20:00 UTC</div>
-      <div class="info-item"><strong style="color:var(--pw)">Latest News</strong><br>Squad updates and injury reports refresh every day.</div>
+  <div class="info-tab-row">
+    <button class="info-tab-btn active" data-tab="match" onclick="showInfoTab('match',this)">🏟️ Match Hub</button>
+    <button class="info-tab-btn" data-tab="pulse" onclick="showInfoTab('pulse',this)">📡 Hot Signals</button>
+    <button class="info-tab-btn" data-tab="rules" onclick="showInfoTab('rules',this)">📋 Rules</button>
+    <button class="info-tab-btn" data-tab="ai" onclick="showInfoTab('ai',this)">🤖 PIQUE</button>
+  </div>
+
+  <div class="card acc-b info-sec info-section" id="info-match-hub">
+    <div class="info-head">🏟️ Groups &amp; Fixtures</div>
+
+    <div class="group-pills" id="groupPills">
+      <button class="group-pill active" onclick="filterGroup('all',this)">All</button>
+      <button class="group-pill" onclick="filterGroup('A',this)">A</button>
+      <button class="group-pill" onclick="filterGroup('B',this)">B</button>
+      <button class="group-pill" onclick="filterGroup('C',this)">C</button>
+      <button class="group-pill" onclick="filterGroup('D',this)">D</button>
+      <button class="group-pill" onclick="filterGroup('E',this)">E</button>
+      <button class="group-pill" onclick="filterGroup('F',this)">F</button>
+      <button class="group-pill" onclick="filterGroup('G',this)">G</button>
+      <button class="group-pill" onclick="filterGroup('H',this)">H</button>
+      <button class="group-pill" onclick="filterGroup('I',this)">I</button>
+      <button class="group-pill" onclick="filterGroup('J',this)">J</button>
+      <button class="group-pill" onclick="filterGroup('K',this)">K</button>
+      <button class="group-pill" onclick="filterGroup('L',this)">L</button>
+      <button class="group-pill knockout" onclick="filterGroup('R16',this)">R-16</button>
+      <button class="group-pill knockout" onclick="filterGroup('QF',this)">Quarter-Final</button>
+      <button class="group-pill knockout" onclick="filterGroup('SF',this)">Semi-Final</button>
+      <button class="group-pill knockout" onclick="filterGroup('F',this)">Final</button>
+    </div>
+
+    <div id="matchGroups"></div>
+    <div id="knockoutRounds"></div>
+
+    <div id="info-leaderboards" class="info-lead-links">
+      <div class="info-head">🏆 Leaderboards</div>
+      <div class="info-list">
+        <div class="info-item">Nation WAR ranking and country momentum updates.</div>
+        <div class="info-item">Global and national standings with contribution points.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+        <button class="btn b-g" onclick="go('wars',document.querySelector('.nb[data-page=\'wars\']'))">NATION WARS</button>
+        <button class="btn b-gh" onclick="go('home',document.querySelector('.nb[data-page=\'home\']'))">HOME RANKS</button>
+      </div>
     </div>
   </div>
 
-  <div class="card acc-y info-sec" id="info-game-rules">
-    <div class="info-head">📘 GAME RULES</div>
-    <div id="info-rules-content" class="rules-doc"></div>
-    <button class="btn b-y" style="margin-top:8px" onclick="go('rules',null)">OPEN FULL RULEBOOK →</button>
-  </div>
-
-  <div class="card acc-g info-sec" id="info-hot-signals">
-    <div class="info-head">📡 HOT SIGNALS</div>
+  <div class="card acc-g info-sec info-section hidden" id="info-hot-signals">
+    <div class="info-head">📡 Hot Signals</div>
     <div id="info-pulse-content" class="pulse-feed"></div>
     <button class="btn b-b" style="margin-top:8px" onclick="go('pulse',null)">OPEN PITCH PULSE →</button>
   </div>
 
-  <div class="card acc-m info-sec" id="info-leaderboards">
-    <div class="info-head">🏆 LEADERBOARDS</div>
-    <div class="info-list">
-      <div class="info-item">Nation WAR ranking and country momentum updates.</div>
-      <div class="info-item">Global and national standings with contribution points.</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
-      <button class="btn b-g" onclick="go('wars',document.querySelector('.nb[data-page=\'wars\']'))">NATION WARS</button>
-      <button class="btn b-gh" onclick="go('home',document.querySelector('.nb[data-page=\'home\']'))">HOME RANKS</button>
-    </div>
+  <div class="card acc-y info-sec info-section hidden" id="info-game-rules">
+    <div class="info-head">📋 Game Rules &amp; Airdrop Overview</div>
+    <div id="info-rules-content" class="rules-doc info-rules-wrap"></div>
+    <button class="btn b-y" style="margin-top:8px" onclick="go('rules',null)">OPEN FULL RULEBOOK →</button>
   </div>
 
-  <div class="card acc-r info-sec" id="info-ai-bot">
-    <div class="info-head">🤖 Ask WC26 AI</div>
-    <div class="info-ai-wrap">
-      <input id="info-ai-input" class="info-ai-input" type="text" placeholder="Ask about matches, rules, rewards...">
-      <button class="btn b-y" style="width:auto;padding:0 12px" onclick="infoAiSend()">SEND</button>
+  <div class="card acc-r info-sec info-section hidden" id="info-ai-bot">
+    <div class="ai-bot-box">
+      <div class="ai-bot-title">🤖 Ask WC26 AI</div>
+      <div class="ai-bot-sub">Your WC26 AI companion. Ask about teams, stats, rules or your journey.</div>
+      <div class="ai-input-row">
+        <input class="ai-input" id="info-ai-input" placeholder="e.g. Who will win Group C?" onkeydown="if(event.key==='Enter')infoAiSend()">
+        <button class="btn b-b" style="width:auto;padding:0 12px" onclick="infoAiSend()">ASK</button>
+      </div>
+      <div class="ai-response" id="info-ai-log">Coming soon: AI assistant for match insights and reward guidance.</div>
     </div>
-    <div class="info-ai-log" id="info-ai-log">Coming soon: AI assistant for match insights and reward guidance.</div>
   </div>
 </div>
-
 <!-- ══════════ PENALTY CHALLENGE v8 ══════════ -->
 <div id="page-penalty" class="pg">
 
@@ -2365,6 +2708,18 @@ var SPIN_REWARDS=[
 // Keep zero offset; center map below is calibrated to the current wheel image.
 var SPIN_WHEEL_ANGLE_OFFSET=0;
 var SPIN_UI={angle:0,busy:false};
+var SPIN_SEGMENT_ORDER=['k100','k200','nothing','q2x','r3x','ticket','k50'];
+var SPIN_SEGMENT_THEME={
+  k50:{text1:'50',text2:'KICK',color1:'#2a1a00',color2:'#E5A020',text:'#f7d165',glow:'#E5A020'},
+  k100:{text1:'100',text2:'KICK',color1:'#0d4a20',color2:'#1FBF6A',text:'#9df6c2',glow:'#1FBF6A'},
+  k200:{text1:'200',text2:'KICK',color1:'#4a2e00',color2:'#F5C542',text:'#ffe69b',glow:'#F5C542'},
+  q2x:{text1:'2x QUIZ',text2:'TODAY',color1:'#0a1a3a',color2:'#1E88E5',text:'#9fd1ff',glow:'#1E88E5'},
+  r3x:{text1:'3x REF',text2:'TODAY',color1:'#2a0a3a',color2:'#AB47BC',text:'#d7a9ff',glow:'#AB47BC'},
+  ticket:{text1:'BOX',text2:'TICKET',color1:'#0a2a3a',color2:'#26C6DA',text:'#9defff',glow:'#26C6DA'},
+  nothing:{text1:'NOTHING',text2:'',color1:'#0a0a0a',color2:'#1a1a2a',text:'#9aa4b1',glow:'#7f8a96'}
+};
+var SPIN_CANVAS={ready:false,anim:0,size:290};
+
 var SPIN_BGM={ctx:null,master:null,timer:0,playing:false,step:0};
 var SPIN_POP_TIMER=0;
 var AP_PREVIEW={
@@ -2589,7 +2944,23 @@ function renderHomeQuickPlay(){
   if(spinLeftEl && typeof spinLeft==='function'){
     spinLeftEl.textContent=spinLeft();
   }
+  if(typeof updateHomeSpin==='function') updateHomeSpin();
 }
+function updateHomeSpin(){
+  var sub=document.getElementById('homeSpinSub');
+  var wrap=document.getElementById('homeSpinBtnWrap');
+  if(!sub || !wrap) return;
+  var left=(typeof spinLeft==='function')?spinLeft():0;
+  if(left<=0){
+    sub.textContent='All spins used today';
+    wrap.innerHTML='<div class="spin-done-msg">Come back tomorrow ⏰</div>';
+    return;
+  }
+  sub.textContent=left+' spin'+(left>1?'s':'')+' left today · Win 50-200 KICK';
+  wrap.innerHTML='<button class="spin-cta-btn" onclick="event.stopPropagation();goSpinFromHome()">⚡ SPIN NOW</button>';
+}
+
+
 function renderHomeNationMini(glow){
   var wrap=document.getElementById('home-top-nations');
   if(!wrap || typeof warBuildNationRows!=='function') return;
@@ -2629,14 +3000,389 @@ function renderHomeNationMini(glow){
 function goSpinFromHome(){
   go('spin',document.querySelector('.nb[data-page="spin"]'));
   setTimeout(function(){
-    var wheel=document.getElementById('spin-wheel');
+    if(typeof spinInitCanvas==='function') spinInitCanvas();
+    var wheel=document.getElementById('spinStage')||document.getElementById('spinCanvas');
     if(wheel) wheel.scrollIntoView({behavior:'smooth',block:'center'});
   },140);
 }
 function openInfoSection(sectionId){
   INFO_SCROLL_TARGET=sectionId||'';
+  infoCurrentTab=infoTabFromTarget(INFO_SCROLL_TARGET);
   go('info',document.querySelector('.nb[data-page="info"]'));
 }
+
+var INFO_TAB_MAP={
+  match:'info-match-hub',
+  pulse:'info-hot-signals',
+  rules:'info-game-rules',
+  ai:'info-ai-bot'
+};
+var infoCurrentTab='match';
+function infoTabFromTarget(sectionId){
+  if(!sectionId) return 'match';
+  if(sectionId==='info-hot-signals') return 'pulse';
+  if(sectionId==='info-game-rules') return 'rules';
+  if(sectionId==='info-ai-bot') return 'ai';
+  return 'match';
+}
+function showInfoTab(tab,btn){
+  if(!INFO_TAB_MAP[tab]) tab='match';
+  infoCurrentTab=tab;
+  Object.keys(INFO_TAB_MAP).forEach(function(k){
+    var el=document.getElementById(INFO_TAB_MAP[k]);
+    if(el) el.classList.toggle('hidden',k!==tab);
+  });
+  document.querySelectorAll('.info-tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  var activeBtn=btn||document.querySelector('.info-tab-btn[data-tab="'+tab+'"]');
+  if(activeBtn) activeBtn.classList.add('active');
+}
+
+const WC26_GROUPS = [
+  {
+    name:'GROUP A', badge:'🇲🇽',
+    teams:[
+      {flag:'🇲🇽',name:'Mexico',rank:15,host:true},
+      {flag:'🇿🇦',name:'South Africa',rank:63},
+      {flag:'🇰🇷',name:'South Korea',rank:22},
+      {flag:'🏳️',name:'UEFA P/O D*',rank:'—',tbd:true},
+    ],
+    matches:[
+      {date:'Jun 11',time:'15:00',home:'🇲🇽 Mexico',away:'🇿🇦 South Africa',venue:'Azteca, Mexico City'},
+      {date:'Jun 11',time:'22:00',home:'🇰🇷 Korea',away:'🏳️ P/O D',venue:'Akron, Guadalajara'},
+      {date:'Jun 18',time:'12:00',home:'🏳️ P/O D',away:'🇿🇦 South Africa',venue:'Atlanta'},
+      {date:'Jun 18',time:'21:00',home:'🇲🇽 Mexico',away:'🇰🇷 Korea',venue:'Akron, Guadalajara'},
+      {date:'Jun 24',time:'21:00',home:'🏳️ P/O D',away:'🇲🇽 Mexico',venue:'Azteca, Mexico City'},
+      {date:'Jun 24',time:'21:00',home:'🇿🇦 South Africa',away:'🇰🇷 Korea',venue:'Monterrey'},
+    ]
+  },
+  {
+    name:'GROUP B', badge:'🇨🇦',
+    teams:[
+      {flag:'🇨🇦',name:'Canada',rank:40,host:true},
+      {flag:'🏳️',name:'UEFA P/O A*',rank:'—',tbd:true},
+      {flag:'🇶🇦',name:'Qatar',rank:58},
+      {flag:'🇨🇭',name:'Switzerland',rank:19},
+    ],
+    matches:[
+      {date:'Jun 12',time:'15:00',home:'🇨🇦 Canada',away:'🏳️ P/O A',venue:'BMO Field, Toronto'},
+      {date:'Jun 13',time:'15:00',home:'🇶🇦 Qatar',away:'🇨🇭 Switzerland',venue:'San Francisco'},
+      {date:'Jun 18',time:'15:00',home:'🇨🇭 Switzerland',away:'🏳️ P/O A',venue:'Los Angeles'},
+      {date:'Jun 18',time:'18:00',home:'🇨🇦 Canada',away:'🇶🇦 Qatar',venue:'BC Place, Vancouver'},
+      {date:'Jun 24',time:'15:00',home:'🇨🇭 Switzerland',away:'🇨🇦 Canada',venue:'BC Place, Vancouver'},
+      {date:'Jun 24',time:'15:00',home:'🏳️ P/O A',away:'🇶🇦 Qatar',venue:'Seattle'},
+    ]
+  },
+  {
+    name:'GROUP C', badge:'🇧🇷',
+    teams:[
+      {flag:'🇧🇷',name:'Brazil',rank:5},
+      {flag:'🇲🇦',name:'Morocco',rank:11},
+      {flag:'🇭🇹',name:'Haiti',rank:89},
+      {flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',name:'Scotland',rank:39},
+    ],
+    matches:[
+      {date:'Jun 13',time:'18:00',home:'🇧🇷 Brazil',away:'🇲🇦 Morocco',venue:'MetLife, New Jersey'},
+      {date:'Jun 13',time:'21:00',home:'🇭🇹 Haiti',away:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland',venue:'Gillette, Boston'},
+      {date:'Jun 19',time:'18:00',home:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland',away:'🇲🇦 Morocco',venue:'Gillette, Boston'},
+      {date:'Jun 19',time:'21:00',home:'🇧🇷 Brazil',away:'🇭🇹 Haiti',venue:'Philadelphia'},
+      {date:'Jun 24',time:'18:00',home:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland',away:'🇧🇷 Brazil',venue:'Hard Rock, Miami'},
+      {date:'Jun 24',time:'18:00',home:'🇲🇦 Morocco',away:'🇭🇹 Haiti',venue:'Atlanta'},
+    ]
+  },
+  {
+    name:'GROUP D', badge:'🇺🇸',
+    teams:[
+      {flag:'🇺🇸',name:'USA',rank:14,host:true},
+      {flag:'🇵🇾',name:'Paraguay',rank:61},
+      {flag:'🇦🇺',name:'Australia',rank:26},
+      {flag:'🏳️',name:'UEFA P/O C*',rank:'—',tbd:true},
+    ],
+    matches:[
+      {date:'Jun 12',time:'21:00',home:'🇺🇸 USA',away:'🇵🇾 Paraguay',venue:'SoFi, Los Angeles'},
+      {date:'Jun 13',time:'00:00',home:'🇦🇺 Australia',away:'🏳️ P/O C',venue:'BC Place, Vancouver'},
+      {date:'Jun 19',time:'00:00',home:'🏳️ P/O C',away:'🇵🇾 Paraguay',venue:'San Francisco'},
+      {date:'Jun 19',time:'15:00',home:'🇺🇸 USA',away:'🇦🇺 Australia',venue:'Lumen Field, Seattle'},
+      {date:'Jun 25',time:'22:00',home:'🏳️ P/O C',away:'🇺🇸 USA',venue:'SoFi, Los Angeles'},
+      {date:'Jun 25',time:'22:00',home:'🇵🇾 Paraguay',away:'🇦🇺 Australia',venue:'San Francisco'},
+    ]
+  },
+  {
+    name:'GROUP E', badge:'🇩🇪',
+    teams:[
+      {flag:'🇩🇪',name:'Germany',rank:9},
+      {flag:'🇨🇼',name:'Curaçao',rank:82},
+      {flag:'🇨🇮',name:'Ivory Coast',rank:48},
+      {flag:'🇪🇨',name:'Ecuador',rank:38},
+    ],
+    matches:[
+      {date:'Jun 14',time:'13:00',home:'🇩🇪 Germany',away:'🇨🇼 Curaçao',venue:'NRG Stadium, Houston'},
+      {date:'Jun 14',time:'19:00',home:'🇨🇮 Ivory Coast',away:'🇪🇨 Ecuador',venue:'Philadelphia'},
+      {date:'Jun 20',time:'16:00',home:'🇩🇪 Germany',away:'🇨🇮 Ivory Coast',venue:'BMO Field, Toronto'},
+      {date:'Jun 20',time:'20:00',home:'🇪🇨 Ecuador',away:'🇨🇼 Curaçao',venue:'Kansas City'},
+      {date:'Jun 25',time:'16:00',home:'🇨🇼 Curaçao',away:'🇨🇮 Ivory Coast',venue:'Philadelphia'},
+      {date:'Jun 25',time:'16:00',home:'🇪🇨 Ecuador',away:'🇩🇪 Germany',venue:'Dallas'},
+    ]
+  },
+  {
+    name:'GROUP F', badge:'🇳🇱',
+    teams:[
+      {flag:'🇳🇱',name:'Netherlands',rank:7},
+      {flag:'🇯🇵',name:'Japan',rank:17},
+      {flag:'🏳️',name:'UEFA P/O B*',rank:'—',tbd:true},
+      {flag:'🇹🇳',name:'Tunisia',rank:53},
+    ],
+    matches:[
+      {date:'Jun 14',time:'16:00',home:'🇳🇱 Netherlands',away:'🇹🇳 Tunisia',venue:'Kansas City'},
+      {date:'Jun 14',time:'22:00',home:'🇯🇵 Japan',away:'🏳️ P/O B',venue:'Dallas'},
+      {date:'Jun 20',time:'12:00',home:'🏳️ P/O B',away:'🇹🇳 Tunisia',venue:'Seattle'},
+      {date:'Jun 20',time:'15:00',home:'🇳🇱 Netherlands',away:'🇯🇵 Japan',venue:'Los Angeles'},
+      {date:'Jun 25',time:'12:00',home:'🏳️ P/O B',away:'🇳🇱 Netherlands',venue:'Boston'},
+      {date:'Jun 25',time:'12:00',home:'🇹🇳 Tunisia',away:'🇯🇵 Japan',venue:'Houston'},
+    ]
+  },
+  {
+    name:'GROUP G', badge:'🇧🇪',
+    teams:[
+      {flag:'🇧🇪',name:'Belgium',rank:8},
+      {flag:'🇪🇬',name:'Egypt',rank:35},
+      {flag:'🇮🇷',name:'Iran',rank:22},
+      {flag:'🇳🇿',name:'New Zealand',rank:96},
+    ],
+    matches:[
+      {date:'Jun 15',time:'12:00',home:'🇧🇪 Belgium',away:'🇪🇬 Egypt',venue:'Dallas'},
+      {date:'Jun 15',time:'15:00',home:'🇮🇷 Iran',away:'🇳🇿 New Zealand',venue:'Kansas City'},
+      {date:'Jun 20',time:'19:00',home:'🇪🇬 Egypt',away:'🇳🇿 New Zealand',venue:'Boston'},
+      {date:'Jun 20',time:'22:00',home:'🇧🇪 Belgium',away:'🇮🇷 Iran',venue:'New York/NJ'},
+      {date:'Jun 26',time:'20:00',home:'🇪🇬 Egypt',away:'🇧🇪 Belgium',venue:'Miami'},
+      {date:'Jun 26',time:'20:00',home:'🇳🇿 New Zealand',away:'🇮🇷 Iran',venue:'Los Angeles'},
+    ]
+  },
+  {
+    name:'GROUP H', badge:'🇪🇸',
+    teams:[
+      {flag:'🇪🇸',name:'Spain',rank:1},
+      {flag:'🇨🇻',name:'Cape Verde',rank:68},
+      {flag:'🇸🇦',name:'Saudi Arabia',rank:57},
+      {flag:'🇺🇾',name:'Uruguay',rank:16},
+    ],
+    matches:[
+      {date:'Jun 15',time:'12:00',home:'🇪🇸 Spain',away:'🇨🇻 Cape Verde',venue:'Atlanta'},
+      {date:'Jun 15',time:'19:00',home:'🇸🇦 Saudi Arabia',away:'🇺🇾 Uruguay',venue:'Dallas'},
+      {date:'Jun 21',time:'12:00',home:'🇪🇸 Spain',away:'🇸🇦 Saudi Arabia',venue:'Atlanta'},
+      {date:'Jun 21',time:'18:00',home:'🇺🇾 Uruguay',away:'🇨🇻 Cape Verde',venue:'Miami'},
+      {date:'Jun 26',time:'16:00',home:'🇨🇻 Cape Verde',away:'🇸🇦 Saudi Arabia',venue:'Houston'},
+      {date:'Jun 26',time:'16:00',home:'🇺🇾 Uruguay',away:'🇪🇸 Spain',venue:'Boston'},
+    ]
+  },
+  {
+    name:'GROUP I', badge:'🇫🇷',
+    teams:[
+      {flag:'🇫🇷',name:'France',rank:3},
+      {flag:'🇸🇳',name:'Senegal',rank:20},
+      {flag:'🇳🇴',name:'Norway',rank:12},
+      {flag:'🏳️',name:'Inter P/O 2*',rank:'—',tbd:true},
+    ],
+    matches:[
+      {date:'Jun 15',time:'18:00',home:'🇫🇷 France',away:'🇸🇳 Senegal',venue:'Houston'},
+      {date:'Jun 15',time:'22:00',home:'🇳🇴 Norway',away:'🏳️ Inter P/O 2',venue:'Philadelphia'},
+      {date:'Jun 21',time:'15:00',home:'🇸🇳 Senegal',away:'🏳️ Inter P/O 2',venue:'Dallas'},
+      {date:'Jun 21',time:'19:00',home:'🇫🇷 France',away:'🇳🇴 Norway',venue:'New York/NJ'},
+      {date:'Jun 26',time:'12:00',home:'🏳️ Inter P/O 2',away:'🇫🇷 France',venue:'Miami'},
+      {date:'Jun 26',time:'12:00',home:'🇸🇳 Senegal',away:'🇳🇴 Norway',venue:'Kansas City'},
+    ]
+  },
+  {
+    name:'GROUP J', badge:'🇦🇷',
+    teams:[
+      {flag:'🇦🇷',name:'Argentina',rank:2},
+      {flag:'🇩🇿',name:'Algeria',rank:33},
+      {flag:'🇦🇹',name:'Austria',rank:25},
+      {flag:'🇯🇴',name:'Jordan',rank:77},
+    ],
+    matches:[
+      {date:'Jun 16',time:'15:00',home:'🇦🇷 Argentina',away:'🇩🇿 Algeria',venue:'MetLife, New Jersey'},
+      {date:'Jun 16',time:'00:00',home:'🇦🇹 Austria',away:'🇯🇴 Jordan',venue:'San Francisco'},
+      {date:'Jun 21',time:'22:00',home:'🇩🇿 Algeria',away:'🇯🇴 Jordan',venue:'Seattle'},
+      {date:'Jun 22',time:'02:00',home:'🇦🇷 Argentina',away:'🇦🇹 Austria',venue:'Dallas'},
+      {date:'Jun 26',time:'20:00',home:'🇩🇿 Algeria',away:'🇦🇷 Argentina',venue:'Los Angeles'},
+      {date:'Jun 26',time:'20:00',home:'🇯🇴 Jordan',away:'🇦🇹 Austria',venue:'Boston'},
+    ]
+  },
+  {
+    name:'GROUP K', badge:'🇵🇹',
+    teams:[
+      {flag:'🇵🇹',name:'Portugal',rank:6},
+      {flag:'🏳️',name:'Inter P/O 1*',rank:'—',tbd:true},
+      {flag:'🇺🇿',name:'Uzbekistan',rank:50},
+      {flag:'🇨🇴',name:'Colombia',rank:13},
+    ],
+    matches:[
+      {date:'Jun 16',time:'13:00',home:'🇵🇹 Portugal',away:'🏳️ Inter P/O 1',venue:'Houston'},
+      {date:'Jun 16',time:'19:00',home:'🇺🇿 Uzbekistan',away:'🇨🇴 Colombia',venue:'Philadelphia'},
+      {date:'Jun 22',time:'13:00',home:'🏳️ Inter P/O 1',away:'🇺🇿 Uzbekistan',venue:'Kansas City'},
+      {date:'Jun 22',time:'19:00',home:'🇵🇹 Portugal',away:'🇨🇴 Colombia',venue:'Miami'},
+      {date:'Jun 27',time:'07:30',home:'🏳️ Inter P/O 1',away:'🇵🇹 Portugal',venue:'Atlanta'},
+      {date:'Jun 27',time:'07:30',home:'🇨🇴 Colombia',away:'🇺🇿 Uzbekistan',venue:'Seattle'},
+    ]
+  },
+  {
+    name:'GROUP L', badge:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+    teams:[
+      {flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',name:'England',rank:4},
+      {flag:'🇭🇷',name:'Croatia',rank:10},
+      {flag:'🇬🇭',name:'Ghana',rank:60},
+      {flag:'🇵🇦',name:'Panama',rank:73},
+    ],
+    matches:[
+      {date:'Jun 17',time:'18:00',home:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 England',away:'🇭🇷 Croatia',venue:'AT&T Stadium, Dallas'},
+      {date:'Jun 17',time:'22:00',home:'🇬🇭 Ghana',away:'🇵🇦 Panama',venue:'Los Angeles'},
+      {date:'Jun 22',time:'16:00',home:'🇭🇷 Croatia',away:'🇵🇦 Panama',venue:'New York/NJ'},
+      {date:'Jun 22',time:'22:00',home:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 England',away:'🇬🇭 Ghana',venue:'Houston'},
+      {date:'Jun 27',time:'16:00',home:'🇭🇷 Croatia',away:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 England',venue:'Philadelphia'},
+      {date:'Jun 27',time:'16:00',home:'🇵🇦 Panama',away:'🇬🇭 Ghana',venue:'Atlanta'},
+    ]
+  },
+];
+
+var KO_ROUNDS=['R16','QF','SF','F'];
+
+function filterGroup(letter, btn) {
+  document.querySelectorAll('.group-pill').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  var isKO = KO_ROUNDS.indexOf(letter) >= 0;
+
+  // Toggle group section
+  var matchGroups = document.getElementById('matchGroups');
+  if (matchGroups) matchGroups.style.display = isKO ? 'none' : 'block';
+
+  // Toggle knockout section
+  var koSection = document.getElementById('knockoutRounds');
+  if (koSection) koSection.style.display = isKO ? 'block' : 'none';
+
+  if (!isKO) {
+    // Show/hide group cards
+    var cards = document.querySelectorAll('#matchGroups .group-card');
+    cards.forEach(card => {
+      if (letter === 'all') {
+        card.classList.remove('hidden-group');
+      } else {
+        var header = card.querySelector('.group-header');
+        var matches = header && header.textContent.includes('GROUP ' + letter);
+        card.classList.toggle('hidden-group', !matches);
+      }
+    });
+  } else {
+    // Show/hide knockout cards
+    document.querySelectorAll('.knockout-card').forEach(card => {
+      card.classList.toggle('ko-visible', letter === 'all' || card.dataset.round === letter);
+    });
+  }
+
+  var el = document.getElementById('matchGroups');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+var WC26_KNOCKOUT = [
+  {
+    id: 'R16',
+    label: 'R-16',
+    badge: '🔥',
+    matches: [
+      { slot:'M81', date:'Jul 9',  time:'15:00', home:'TBD', away:'TBD', venue:'MetLife Stadium (NJ)' },
+      { slot:'M82', date:'Jul 9',  time:'19:00', home:'TBD', away:'TBD', venue:'AT&T Stadium (Dallas)' },
+      { slot:'M83', date:'Jul 10', time:'15:00', home:'TBD', away:'TBD', venue:'SoFi Stadium (LA)' },
+      { slot:'M84', date:'Jul 10', time:'19:00', home:'TBD', away:'TBD', venue:'Mercedes-Benz Stadium (Atlanta)' },
+      { slot:'M85', date:'Jul 11', time:'15:00', home:'TBD', away:'TBD', venue:'BC Place (Vancouver)' },
+      { slot:'M86', date:'Jul 11', time:'19:00', home:'TBD', away:'TBD', venue:'Estadio Azteca (Mexico)' },
+      { slot:'M87', date:'Jul 12', time:'15:00', home:'TBD', away:'TBD', venue:'NRG Stadium (Houston)' },
+      { slot:'M88', date:'Jul 12', time:'19:00', home:'TBD', away:'TBD', venue:"Levi's Stadium (SF)" },
+    ]
+  },
+  {
+    id: 'QF',
+    label: 'Quarter-Finals',
+    badge: '⚡',
+    matches: [
+      { slot:'M89', date:'Jul 16', time:'15:00', home:'TBD', away:'TBD', venue:'MetLife Stadium (NJ)' },
+      { slot:'M90', date:'Jul 16', time:'19:00', home:'TBD', away:'TBD', venue:'SoFi Stadium (LA)' },
+      { slot:'M91', date:'Jul 17', time:'15:00', home:'TBD', away:'TBD', venue:'AT&T Stadium (Dallas)' },
+      { slot:'M92', date:'Jul 17', time:'19:00', home:'TBD', away:'TBD', venue:'Mercedes-Benz Stadium (Atlanta)' },
+    ]
+  },
+  {
+    id: 'SF',
+    label: 'Semi-Finals',
+    badge: '🏅',
+    matches: [
+      { slot:'M93', date:'Jul 22', time:'20:00', home:'TBD', away:'TBD', venue:'MetLife Stadium (NJ)' },
+      { slot:'M94', date:'Jul 23', time:'20:00', home:'TBD', away:'TBD', venue:'Rose Bowl (LA)' },
+    ]
+  },
+  {
+    id: 'F',
+    label: 'Final 🏆',
+    badge: '🏆',
+    matches: [
+      { slot:'3rd', date:'Jul 25', time:'16:00', home:'TBD', away:'TBD', venue:'MetLife Stadium (NJ)' },
+      { slot:'FINAL', date:'Jul 19 2026', time:'20:00', home:'TBD', away:'TBD', venue:'MetLife Stadium (NJ)' },
+    ]
+  }
+];
+
+function renderKnockoutRounds() {
+  var el = document.getElementById('knockoutRounds');
+  if (!el) return;
+  el.style.display = 'none';
+  el.innerHTML = WC26_KNOCKOUT.map(function(r) {
+    var rows = r.matches.map(function(m) {
+      var isReal = m.home !== 'TBD';
+      return '<div class="knockout-match">' +
+        '<span class="ko-slot">' + m.slot + '</span>' +
+        '<span class="ko-teams">' +
+          (isReal ? m.home + ' <span style="color:var(--c-gray)">vs</span> ' + m.away
+                  : '<span class="tbd">' + m.home + ' vs ' + m.away + '</span>') +
+        '</span>' +
+        '<span class="ko-info">' +
+          '<span class="ko-date">' + m.date + ' ' + m.time + '</span>' +
+          '<span class="ko-venue">' + m.venue + '</span>' +
+        '</span>' +
+      '</div>';
+    }).join('');
+    return '<div class="knockout-card" data-round="' + r.id + '">' +
+      '<div class="knockout-header">' +
+        '<div class="knockout-badge">' + r.badge + '</div>' +
+        r.label +
+      '</div>' +
+      rows +
+    '</div>';
+  }).join('');
+}
+
+function renderMatchGroups() {
+  const el = document.getElementById('matchGroups');
+  if (!el) return;
+  el.innerHTML = WC26_GROUPS.map(g => `
+    <div class="group-card">
+      <div class="group-header">${g.badge} ${g.name}</div>
+      ${g.teams.map(t => `
+        <div class="group-team">
+          <span class="group-team-flag">${t.flag}</span>
+          <span class="group-team-name">${t.name}${t.host ? ' 🏠' : ''}${t.tbd ? ' <span style=\"font-size:9px;color:var(--c-gray)\">(TBD)</span>' : ''}</span>
+          <span class="group-team-rank">${t.rank !== '—' ? 'FIFA #'+t.rank : '—'}</span>
+        </div>`).join('')}
+      <div style="padding:8px 14px 4px; border-top:1px solid var(--br2);">
+        <div style="font-size:9px;color:var(--c-gray);font-weight:600;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase;">MATCH SCHEDULE (ET)</div>
+        ${g.matches.map(m => `
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px;">
+            <span style="color:var(--c-yellow);font-family:var(--font-mono);min-width:58px;flex-shrink:0;">${m.date} ${m.time}</span>
+            <span style="color:var(--c-white);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.home} <span style="color:var(--c-gray)">vs</span> ${m.away}</span>
+            <span style="color:var(--c-gray);font-size:9px;flex-shrink:0;text-align:right;">${m.venue}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+
 function renderInfoHotSignals(){
   var wrap=document.getElementById('info-pulse-content');
   if(!wrap || !Array.isArray(PULSE_SIGNALS)) return;
@@ -2660,13 +3406,22 @@ function renderInfoHotSignals(){
   }
   wrap.innerHTML=html;
 }
+
 function initInfoComposite(){
+  var groups=document.getElementById('matchGroups');
+  if(groups && !groups.dataset.ready){
+    renderMatchGroups();
+    renderKnockoutRounds();
+    groups.dataset.ready='1';
+  }
+
   var rulesSrc=document.querySelector('#page-rules .rules-doc');
   var rulesDst=document.getElementById('info-rules-content');
   if(rulesSrc && rulesDst && !rulesDst.dataset.bound){
     rulesDst.innerHTML=rulesSrc.innerHTML;
     rulesDst.dataset.bound='1';
   }
+
   var pulseWrap=document.getElementById('info-pulse-content');
   var pulseSrc=document.querySelector('#page-pulse .pulse-feed');
   if(pulseWrap && pulseSrc && !pulseWrap.dataset.bound){
@@ -2681,19 +3436,48 @@ function initInfoComposite(){
     renderInfoHotSignals();
     pulseWrap.dataset.bound='1';
   }
+
+  var tabToShow=INFO_SCROLL_TARGET?infoTabFromTarget(INFO_SCROLL_TARGET):infoCurrentTab;
+  showInfoTab(tabToShow);
 }
+
+var INFO_AI_RESPONSES={
+  default:"I'm your WC26 AI assistant! Ask me about World Cup 2026 teams, match schedules, or your KICK earnings. Full AI integration coming soon! 🤖⚽",
+  brazil:"🇧🇷 Brazil is in Group C alongside Morocco, Haiti and Scotland. Opens vs Morocco at MetLife Stadium on Jun 13.",
+  argentina:"🇦🇷 Defending champions Argentina are in Group J with Algeria, Austria and Jordan. Opens vs Algeria at MetLife on Jun 16.",
+  france:"🇫🇷 France is in Group I with Senegal, Norway and Intercontinental P/O 2. France vs Norway is a marquee game.",
+  kick:'💰 You currently have '+fmtKickFull(S.kick)+' total KICK. Keep playing daily games and completing social tasks.',
+  spin:"🎯 Daily Spin gives 50-200 KICK + boosts. You get 1 free spin daily and can unlock extras.",
+  penalty:"⚽ Penalty Challenge: 3 free solo matches/day, win +2,000 KICK. In PvP: win +2,000 but lose -2,500."
+};
+
 function infoAiSend(){
   var input=document.getElementById('info-ai-input');
   var log=document.getElementById('info-ai-log');
   if(!log) return;
-  var q=input?String(input.value||'').trim():'';
+  var q=(input?String(input.value||'').trim().toLowerCase():'');
   if(!q){
     log.textContent='Coming soon: AI assistant is in preview mode.';
+    log.classList.add('show');
     return;
   }
-  log.textContent='🤖 Coming soon. Demo reply: "'+q+'" received. Match and reward insights will be available in a later update.';
-  if(input) input.value='';
+
+  log.textContent='🤔 Thinking...';
+  log.classList.add('show');
+
+  setTimeout(function(){
+    var answer=INFO_AI_RESPONSES.default;
+    if(q.indexOf('brazil')>=0) answer=INFO_AI_RESPONSES.brazil;
+    else if(q.indexOf('argentina')>=0) answer=INFO_AI_RESPONSES.argentina;
+    else if(q.indexOf('france')>=0) answer=INFO_AI_RESPONSES.france;
+    else if(q.indexOf('kick')>=0) answer='💰 You currently have '+fmtKickFull(S.kick)+' total KICK.';
+    else if(q.indexOf('spin')>=0) answer=INFO_AI_RESPONSES.spin;
+    else if(q.indexOf('penalty')>=0) answer=INFO_AI_RESPONSES.penalty;
+    log.textContent=answer;
+    if(input) input.value='';
+  },700);
 }
+
 function parseSpinBonus(v){
   if(typeof v==='boolean') return v?1:0;
   var n=Math.floor(Number(v)||0);
@@ -4164,21 +4948,171 @@ async function spinReset10OncePerDay(){
   return false;
 }
 function spinRewardAngleById(id){
-  // Center angles (clockwise from top), calibrated to daily-lucky-spin-wheel.png.
-  // Calibrated map (visual lock): each reward points to its exact visible sector.
-  var m={
-    k50:282.857,
-    k100:334.286,
-    k200:25.714,
-    q2x:77.142,
-    r3x:128.571,
-    ticket:180.000,
-    nothing:231.429
-  };
-  var base=Object.prototype.hasOwnProperty.call(m,id)?m[id]:334.286;
-  var out=(base+SPIN_WHEEL_ANGLE_OFFSET)%360;
+  var idx=spinRewardIndexById(id);
+  var seg=360/SPIN_SEGMENT_ORDER.length;
+  var center=idx*seg+seg/2;
+  var out=(center+SPIN_WHEEL_ANGLE_OFFSET)%360;
   if(out<0) out+=360;
   return out;
+}
+function spinRewardIndexById(id){
+  var idx=SPIN_SEGMENT_ORDER.indexOf(id);
+  return idx>=0?idx:0;
+}
+function spinDrawWheel(rotationDeg){
+  var canvas=document.getElementById('spinCanvas');
+  if(!canvas) return;
+  var ctx=canvas.getContext('2d');
+  if(!ctx) return;
+
+  var dpr=window.devicePixelRatio||1;
+  var cssW=canvas.clientWidth||290;
+  var cssH=canvas.clientHeight||290;
+  var rw=Math.round(cssW*dpr);
+  var rh=Math.round(cssH*dpr);
+  if(canvas.width!==rw || canvas.height!==rh){
+    canvas.width=rw;
+    canvas.height=rh;
+  }
+
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.scale(dpr,dpr);
+
+  var W=cssW,H=cssH;
+  var cx=W/2,cy=H/2;
+  var R=Math.min(W,H)/2-8;
+  var r=40;
+  var n=SPIN_SEGMENT_ORDER.length;
+  var arc=(Math.PI*2)/n;
+
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate((rotationDeg*Math.PI)/180);
+  ctx.translate(-cx,-cy);
+
+  for(var i=0;i<n;i++){
+    var id=SPIN_SEGMENT_ORDER[i];
+    var seg=SPIN_SEGMENT_THEME[id]||SPIN_SEGMENT_THEME.k100;
+    var start=i*arc-Math.PI/2;
+    var end=start+arc;
+    var mid=start+arc/2;
+
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,start,end);
+    ctx.closePath();
+
+    var gx=cx+Math.cos(mid)*R*0.45;
+    var gy=cy+Math.sin(mid)*R*0.45;
+    var grad=ctx.createRadialGradient(cx,cy,r,gx,gy,R*0.9);
+    grad.addColorStop(0,seg.color1);
+    grad.addColorStop(1,seg.color2+'cc');
+    ctx.fillStyle=grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+R*Math.cos(start),cy+R*Math.sin(start));
+    ctx.strokeStyle='rgba(0,0,0,.55)';
+    ctx.lineWidth=2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx,cy,R-1,start,end);
+    ctx.strokeStyle=seg.glow+'99';
+    ctx.lineWidth=3;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(mid);
+    var dist=(R+r)/2+8;
+
+    ctx.fillStyle=seg.text;
+    ctx.shadowColor=seg.glow;
+    ctx.shadowBlur=8;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+
+    ctx.font='700 11px "JetBrains Mono", monospace';
+    ctx.fillText(seg.text1,dist,seg.text2?-7:0);
+    if(seg.text2){
+      ctx.font='700 9px "Inter", sans-serif';
+      ctx.fillText(seg.text2,dist,7);
+    }
+    ctx.restore();
+  }
+
+  var ringGrad=ctx.createRadialGradient(cx,cy,R-6,cx,cy,R+6);
+  ringGrad.addColorStop(0,'rgba(40,40,50,.8)');
+  ringGrad.addColorStop(.5,'rgba(80,80,90,.6)');
+  ringGrad.addColorStop(1,'rgba(20,20,30,.9)');
+  ctx.beginPath();
+  ctx.arc(cx,cy,R+3,0,Math.PI*2);
+  ctx.arc(cx,cy,R-3,0,Math.PI*2,true);
+  ctx.fillStyle=ringGrad;
+  ctx.fill();
+
+  for(var j=0;j<n;j++){
+    var a=j*arc-Math.PI/2;
+    var sx=cx+R*Math.cos(a);
+    var sy=cy+R*Math.sin(a);
+    ctx.beginPath();
+    ctx.arc(sx,sy,4,0,Math.PI*2);
+    var sg=ctx.createRadialGradient(sx-1,sy-1,0,sx,sy,4);
+    sg.addColorStop(0,'#ddd');
+    sg.addColorStop(1,'#555');
+    ctx.fillStyle=sg;
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx,cy,r+2,0,Math.PI*2);
+  var cgrad=ctx.createRadialGradient(cx-8,cy-8,0,cx,cy,r+2);
+  cgrad.addColorStop(0,'#1a2a1a');
+  cgrad.addColorStop(1,'#050e08');
+  ctx.fillStyle=cgrad;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx,cy,r+2,0,Math.PI*2);
+  ctx.strokeStyle='rgba(31,191,106,.4)';
+  ctx.lineWidth=2;
+  ctx.stroke();
+
+  ctx.restore();
+}
+function spinInitCanvas(){
+  var canvas=document.getElementById('spinCanvas');
+  if(!canvas) return;
+  if(!SPIN_CANVAS.ready){
+    window.addEventListener('resize',function(){ spinDrawWheel(SPIN_UI.angle||0); });
+    SPIN_CANVAS.ready=true;
+  }
+  spinDrawWheel(SPIN_UI.angle||0);
+}
+function spinAnimateWheelTo(targetDeg,duration,onDone){
+  if(SPIN_CANVAS.anim) cancelAnimationFrame(SPIN_CANVAS.anim);
+  var start=performance.now();
+  var from=SPIN_UI.angle||0;
+  var delta=targetDeg-from;
+
+  function easeOut(t){ return 1-Math.pow(1-t,3); }
+  function step(now){
+    var t=Math.min(1,(now-start)/duration);
+    var cur=from+delta*easeOut(t);
+    SPIN_UI.angle=cur;
+    spinDrawWheel(cur);
+    if(t<1){
+      SPIN_CANVAS.anim=requestAnimationFrame(step);
+      return;
+    }
+    SPIN_CANVAS.anim=0;
+    SPIN_UI.angle=targetDeg;
+    spinDrawWheel(targetDeg);
+    if(typeof onDone==='function') onDone();
+  }
+  SPIN_CANVAS.anim=requestAnimationFrame(step);
 }
 function spinPickReward(){
   var r=Math.random()*100;
@@ -4232,30 +5166,40 @@ function spinRender(){
   spinEnsureToday();
   var cap=spinGetCap();
   var left=spinLeft();
-  var leftEl=document.getElementById('spin-left');
+
+  var leftEl=document.getElementById('spinStatLeft');
   if(leftEl) leftEl.textContent=left;
-  var capEl=document.getElementById('spin-cap');
+  var capEl=document.getElementById('spinStatDone');
   if(capEl) capEl.textContent=cap;
   updateTicketUI();
+
+  var sub=document.getElementById('spinSubtitle');
+  if(sub){
+    sub.textContent=left>0
+      ?(left+' Free Spin'+(left>1?'s':'')+' Ready')
+      :'All spins used · Unlock more below';
+  }
 
   var qBoostEl=document.getElementById('spin-quiz-boost');
   if(qBoostEl){
     var qMul=getQuizBoostMultiplier();
     qBoostEl.textContent=qMul>1?('Active · '+qMul+'x'):'Inactive';
-    qBoostEl.classList.toggle('active',qMul>1);
   }
   var rBoostEl=document.getElementById('spin-ref-boost');
   if(rBoostEl){
     var rMul=getReferralBoostMultiplier();
     rBoostEl.textContent=rMul>1?('Active · '+rMul+'x'):'Inactive';
-    rBoostEl.classList.toggle('active',rMul>1);
   }
 
-  var spinBtn=document.getElementById('spin-btn');
-  if(spinBtn){
-    spinBtn.disabled=SPIN_UI.busy || left<=0;
-    spinBtn.classList.toggle('no-left',!SPIN_UI.busy && left<=0);
-    spinBtn.textContent=SPIN_UI.busy?'SPINNING...':(left>0?'SPIN':'NO SPINS LEFT');
+  var btn=document.getElementById('spinBigBtn');
+  var txt=document.getElementById('spinBigBtnTxt');
+  var ball=document.getElementById('spinBallBtn');
+  if(btn){
+    var disabled=SPIN_UI.busy||left<=0;
+    btn.disabled=disabled;
+    btn.classList.toggle('disabled',disabled);
+    if(txt) txt.textContent=SPIN_UI.busy?'SPINNING...':(left>0?'SPIN NOW':'COME BACK TOMORROW');
+    if(ball) ball.classList.toggle('spin-ball-pulse',!SPIN_UI.busy&&left>0);
   }
 
   var inviteBtn=document.getElementById('spin-invite-btn');
@@ -4263,15 +5207,31 @@ function spinRender(){
     var inviteCount=Math.max(0,Math.floor(Number(S.spinInvite)||0));
     var capReached=cap>=10;
     inviteBtn.disabled=capReached;
-    inviteBtn.textContent=capReached?'🚫 Daily cap reached (10/10)':'👥 Invite 1 participant (+1 spin) · '+inviteCount;
+    inviteBtn.classList.remove('sbs-done','sbs-todo');
+    if(capReached){
+      inviteBtn.textContent='MAX 10/10';
+      inviteBtn.classList.add('sbs-done');
+    } else {
+      inviteBtn.textContent='+1 SPIN · '+inviteCount;
+      inviteBtn.classList.add('sbs-todo');
+    }
   }
   var shareBtn=document.getElementById('spin-share-btn');
   if(shareBtn){
     var shareCount=Math.max(0,Math.floor(Number(S.spinShare)||0));
     var shareCapReached=cap>=10;
     shareBtn.disabled=shareCapReached;
-    shareBtn.textContent=shareCapReached?'🚫 Daily cap reached (10/10)':'📣 Share WAR ranking (+1 spin) · '+shareCount;
+    shareBtn.classList.remove('sbs-done','sbs-todo');
+    if(shareCapReached){
+      shareBtn.textContent='MAX 10/10';
+      shareBtn.classList.add('sbs-done');
+    } else {
+      shareBtn.textContent='+1 SPIN · '+shareCount;
+      shareBtn.classList.add('sbs-todo');
+    }
   }
+
+  spinInitCanvas();
   renderHomeQuickPlay();
 }
 async function spinUnlockInvite(){
@@ -4337,14 +5297,14 @@ async function spinRoll(){
     }
   }catch(e){}
   if(!reward) reward=spinPickReward();
-  var center=spinRewardAngleById(reward.id);
-  // Snap to an absolute final orientation for the selected reward,
-  // then add extra full turns for animation. This prevents drift across spins.
-  var desired=((360-center)%360+360)%360;
+
+  var idx=spinRewardIndexById(reward.id);
+  var segAngle=360/SPIN_SEGMENT_ORDER.length;
+  var desired=((360-(idx*segAngle+segAngle/2))%360+360)%360;
   var current=((SPIN_UI.angle%360)+360)%360;
   var delta=(desired-current+360)%360;
-  var target=SPIN_UI.angle + 360*6 + delta;
-  SPIN_UI.angle=target;
+  var target=SPIN_UI.angle+360*6+delta;
+
   SPIN_UI.busy=true;
   if(!fromApi){
     S.spinUsed++;
@@ -4353,26 +5313,24 @@ async function spinRoll(){
   spinSetResult('Spinning...',false);
   spinRender();
 
-  var wheel=document.getElementById('spin-wheel');
-  if(wheel) wheel.style.transform='rotate('+target+'deg)';
-  setTimeout(function(){
+  spinAnimateWheelTo(target,4200,function(){
     spinApplyReward(reward,apiDelta,fromApi);
     SPIN_UI.busy=false;
     spinRender();
-  },4200);
+  });
 }
 async function initSpin(){
   spinEnsureToday();
   await spinSyncState();
   SPIN_UI.busy=false;
   SPIN_UI.angle=0;
-  var wheel=document.getElementById('spin-wheel');
-  if(wheel) wheel.style.transform='rotate(0deg)';
+  spinInitCanvas();
   var pop=document.getElementById('spin-pop');
   if(pop){ pop.classList.remove('on','good'); pop.textContent='Reward ready.'; }
   spinSetResult('Spin to claim reward and activate boost.',false);
   spinRender();
 }
+
 /* ─────────── EARN ─────────── */
 function claimTask(id,pts,msg){
   var el=document.getElementById(id); if(!el||el.classList.contains('done')) return;
