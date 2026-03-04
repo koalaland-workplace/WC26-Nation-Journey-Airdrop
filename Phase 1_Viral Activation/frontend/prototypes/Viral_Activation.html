@@ -267,9 +267,9 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .tval{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--pw);}
 .thint{font-size:10.5px;color:var(--gr);}
 .opts{display:flex;flex-direction:column;gap:6px;}
-.opt{padding:10px 12px;background:var(--bg3);border:1.5px solid var(--br);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500;color:var(--wh);transition:all .16s;display:flex;align-items:center;gap:8px;}
+.opt{padding:10px 12px;background:var(--bg3);border:1.5px solid var(--br);border-radius:var(--rs);cursor:pointer;font-size:10.4px;font-weight:500;color:var(--wh);transition:all .16s;display:flex;align-items:center;gap:8px;}
 .opt:active{transform:scale(.97);}
-.oltr{width:22px;height:22px;border-radius:5px;flex-shrink:0;background:var(--bg4);border:1px solid var(--br2);display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:9px;font-weight:800;color:var(--gr);transition:all .16s;}
+.oltr{width:22px;height:22px;border-radius:5px;flex-shrink:0;background:var(--bg4);border:1px solid var(--br2);display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:7.2px;font-weight:800;color:var(--gr);transition:all .16s;}
 .opt.cor{border-color:var(--g);background:rgba(31,191,106,.09);color:var(--g);}
 .opt.cor .oltr{background:var(--g);color:#000;border-color:var(--g);}
 .opt.wrg{border-color:var(--rd);background:var(--rdd);color:var(--rd);}
@@ -7649,12 +7649,16 @@ function drawBall(ctx, x, y, r){
 }
 
 /* ─── no-ops for backward compat ─── */
-function openPenaltyLegacy(){}
+function openPenaltyLegacy(){ openPenalty(); }
 function closePenalty(){ go('home',document.querySelector('.nb[data-page="home"]')); cancelAnimationFrame(P.raf); }
 function initSwipe(){}
 function initKeeperZones(){}
-function startPenalty(){}
-function startPvPMatch(){}
+function startPenalty(){ penStartMatch('solo'); }
+function startPvPMatch(){
+  var opp=penGetSelectedStandby();
+  if(opp) penStartPvpSelected();
+  else penEnterPvpLobby();
+}
 function showRoles(){}
 function penNextRound(){}
 function exitArena(){}
