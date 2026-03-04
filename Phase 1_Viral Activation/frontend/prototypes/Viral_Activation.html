@@ -935,6 +935,126 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .rules-table th{font-family:'Montserrat',sans-serif;font-weight:700;color:var(--pw);text-align:left;}
 .rules-table td{color:var(--gr);}
 .rules-note{font-size:8.8px;color:var(--gr);margin-top:5px;}
+.rules-hero{
+  margin-top:2px;
+  padding:11px 10px 10px;
+  border:1px solid rgba(245,197,66,.28);
+  border-radius:11px;
+  background:
+    radial-gradient(120% 140% at 100% 0%,rgba(245,197,66,.22) 0%,rgba(245,197,66,0) 45%),
+    radial-gradient(120% 120% at 0% 100%,rgba(31,191,106,.18) 0%,rgba(31,191,106,0) 48%),
+    linear-gradient(180deg,rgba(12,35,56,.72),rgba(8,24,36,.78));
+  position:relative;
+  overflow:hidden;
+}
+.rules-hero::after{
+  content:'⚽';
+  position:absolute;
+  right:8px;
+  top:5px;
+  font-size:22px;
+  opacity:.18;
+  transform:rotate(-8deg);
+}
+.rules-hero-kicker{
+  font-family:var(--font-display);
+  font-size:8.4px;
+  font-weight:700;
+  letter-spacing:.9px;
+  color:var(--c-yellow);
+  text-transform:uppercase;
+}
+.rules-hero-title{
+  margin-top:2px;
+  font-family:var(--font-display);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.2;
+  color:var(--c-white);
+}
+.rules-hero-sub{
+  margin-top:5px;
+  font-size:9.3px;
+  color:var(--c-gray);
+  line-height:1.55;
+}
+.rules-hero-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.rules-badge{
+  padding:3px 7px;
+  border-radius:999px;
+  font-family:var(--font-body);
+  font-size:8.5px;
+  font-weight:600;
+  letter-spacing:.1px;
+  border:1px solid transparent;
+}
+.rules-badge.live{color:var(--c-green);background:rgba(31,191,106,.12);border-color:rgba(31,191,106,.34);}
+.rules-badge.future{color:var(--c-blue);background:rgba(30,136,229,.14);border-color:rgba(30,136,229,.32);}
+.rules-list{margin:4px 0 0 14px;padding:0;}
+.rules-list li{margin:3px 0;line-height:1.55;color:var(--gr);}
+.rules-pool-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:7px;}
+.rules-pool{
+  padding:8px;
+  border-radius:9px;
+  border:1px solid var(--br2);
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+}
+.rules-pool .nm{
+  font-family:var(--font-display);
+  font-size:9.3px;
+  font-weight:700;
+  color:var(--pw);
+}
+.rules-pool .val{
+  margin-top:3px;
+  font-family:var(--font-mono);
+  font-size:9.5px;
+  color:var(--y);
+}
+.rules-pool .ds{margin-top:3px;font-size:8.9px;color:var(--gr);line-height:1.52;}
+.rules-formula{
+  margin:6px 0;
+  padding:7px 8px;
+  border:1px dashed rgba(245,197,66,.36);
+  border-radius:9px;
+  background:rgba(245,197,66,.06);
+  color:var(--pw);
+  font-family:var(--font-mono);
+  font-size:9.3px;
+  line-height:1.5;
+}
+.rules-chipline{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.rules-chip{
+  padding:2px 7px;
+  border-radius:999px;
+  font-size:8.4px;
+  font-weight:600;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
+  color:var(--pw);
+}
+.rules-tier-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:7px;}
+.rules-tier{
+  border:1px solid var(--br2);
+  border-radius:9px;
+  background:rgba(255,255,255,.03);
+  padding:7px 8px;
+}
+.rules-tier .tt{
+  font-family:var(--font-display);
+  font-size:9.3px;
+  font-weight:700;
+  color:var(--pw);
+}
+.rules-tier .tv{margin-top:2px;font-family:var(--font-mono);font-size:9px;color:var(--y);}
+.rules-tier .td{margin-top:2px;font-size:8.9px;color:var(--gr);line-height:1.5;}
+.rules-foot{
+  margin-top:8px;
+  padding-top:7px;
+  border-top:1px dashed var(--br2);
+  font-size:8.9px;
+  color:var(--c-gray);
+}
 
 /* ── HOME + INFO OVERRIDES ── */
 #app{padding-bottom:calc(72px + var(--sb));}
@@ -1355,6 +1475,15 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 #page-info .rules-h{font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--c-yellow);margin-bottom:6px;}
 #page-info .rules-subh{font-size:10px;}
 #page-info .rules-box{padding:8px;}
+#page-info .rules-hero-title{font-size:16px;}
+#page-info .rules-hero-sub{font-size:10.6px;}
+#page-info .rules-badge{font-size:9.4px;}
+#page-info .rules-pool .nm{font-size:10.8px;}
+#page-info .rules-pool .val{font-size:10.7px;}
+#page-info .rules-tier .tt{font-size:10.7px;}
+#page-info .rules-tier .tv{font-size:10px;}
+#page-info .rules-tier .td{font-size:10px;}
+#page-info .rules-foot{font-size:9.8px;}
 #page-info .rules-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:10px;}
 #page-info .rules-table th,#page-info .rules-table td{padding:6px 6px;border-bottom:1px solid var(--br2);}
 #page-info .rules-table th{color:var(--c-gray);font-size:9.5px;}
@@ -1790,177 +1919,216 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   <div class="ref-box">
     <div class="ref-title">📢 Game Rules & Announcement</div>
     <div class="rules-doc">
-      <div class="rules-sec">
-        <div class="rules-h">RULEBOOK &amp; AIRDROP DISTRIBUTION</div>
-        <div>KICK is an off-chain participation point, not a blockchain token. WC26 is the only on-chain token, with fixed supply and non-inflationary rules defined in the Whitepaper.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">1. TOKEN ALLOCATION FRAMEWORK</div>
-        <div>The WC26 ecosystem allocates rewards across three primary pools:</div>
-        <div class="rules-subh">1.1 National War Bonus Pool</div>
-        <div>Total Allocation: <strong style="color:var(--y)">1,000,000 WC26</strong></div>
-        <div>Distributed to the winning nation and qualified top contributors under the National War program (subject to compliance, anti-sybil and DAO-approved policy).</div>
-        <div class="rules-subh">1.2 Referral Champion Pool</div>
-        <div>Total Allocation: <strong style="color:var(--bl)">1,000,000 WC26</strong></div>
-        <div>Allocated to the Top 100 global referrers at the official World Cup 2026 snapshot (subject to compliance, anti-sybil and DAO-approved policy).</div>
-        <div class="rules-subh">1.3 Mini Games Conversion Pool</div>
-        <div>Total Allocation: <strong style="color:var(--g)">10,000,000 WC26</strong></div>
-        <div>Reserved exclusively for KICK-to-WC26 conversion across all approved mini games.</div>
-        <div>All allocations are fixed unless amended by official governance notice.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">2. KICK → WC26 CONVERSION MECHANISM</div>
-        <div>Each eligible participant receives WC26 tokens based on proportional contribution:</div>
-        <div class="rules-box">
-          WC26 Allocation per User = <strong style="color:var(--pw)">(Personal KICK ÷ Total System KICK) × 10,000,000 WC26</strong>
+      <div class="rules-hero">
+        <div class="rules-hero-kicker">WC26 NFT Fantasy Rulebook</div>
+        <div class="rules-hero-title">Nation Journey Airdrop - Overview</div>
+        <div class="rules-hero-sub">
+          Nation Journey Airdrop is a two-stage program. Phase 1 (Viral Activation) is live and builds your nation rank, personal rank,
+          tier progression and eligibility. Phase 2 (Tournament Ignition) is pre-announced and will execute conversion + distribution around
+          World Cup 2026 snapshot timing.
         </div>
-        <div>This ensures transparent, contribution-weighted distribution.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">3. AIRDROP ELIGIBILITY REQUIREMENTS</div>
-        <div>To qualify for WC26 allocation, participants must:</div>
-        <div>• Accumulate a minimum of 10,000 KICK</div>
-        <div>• Maintain at least 7 active days</div>
-        <div>• Successfully pass Anti-Sybil and compliance verification</div>
-        <div>Failure to meet these criteria results in disqualification from conversion.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">4. PER-USER CONVERSION CAP</div>
-        <div>A maximum of 500,000 KICK per user will be counted toward WC26 conversion.</div>
-        <div>Any KICK exceeding this threshold will not be included in allocation calculations.</div>
-        <div>This cap ensures equitable distribution and mitigates excessive concentration.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">5. MYSTERY BOX ALLOCATION MATRIX</div>
-        <table class="rules-table">
-          <thead>
-            <tr>
-              <th>Program</th>
-              <th>Legacy</th>
-              <th>Elite</th>
-              <th>Rising</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>WAR Champion</td><td>15</td><td>50</td><td>100</td></tr>
-            <tr><td>Referral</td><td>10</td><td>50</td><td>100</td></tr>
-            <tr><td>Spin Lottery</td><td>5</td><td>25</td><td>100</td></tr>
-            <tr><td>Quiz Leaderboard</td><td>10</td><td>50</td><td>100</td></tr>
-            <tr><td>Final Countdown Event</td><td>10</td><td>75</td><td>100</td></tr>
-          </tbody>
-        </table>
-        <div class="rules-note">Box quantities are subject to compliance review and ecosystem conditions.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">6. REFERRAL BATTLE ROYALE – OFFICIAL STRUCTURE</div>
-        <div class="rules-subh">6.1 Instant Incentives</div>
-        <div>• F1 Registration: +200 KICK</div>
-        <div>• F1 Active (7 Days): +500 KICK</div>
-        <div>• F2 Registration: +50 KICK</div>
-        <div>• F2 Active (7 Days): +100 KICK</div>
-        <div class="rules-subh">6.2 Season Format</div>
-        <div>• Duration: 7 Days</div>
-        <div>• Top 100 Reward: 10K–100K KICK + 5 Elite Boxes</div>
-        <div>• Rank 1 Additional Reward: 1 Legacy Box</div>
-        <div>• Referral allocations are subject to compliance, anti-sybil and DAO-approved policy.</div>
-        <div class="rules-subh">6.3 Referral Conditions</div>
-        <div>• Maximum 50 F1 counted per season</div>
-        <div>• F1 must accumulate ≥1,000 KICK to qualify</div>
-        <div>Fraudulent, automated, or coordinated manipulation will result in disqualification.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">7. DAILY LUCKY SPIN</div>
-        <div class="rules-subh">Spin Access Rules</div>
-        <div>• 1 free spin per day</div>
-        <div>• Invite 1 participant (successful registration): +1 spin</div>
-        <div>• Share WAR ranking: +1 spin</div>
-        <div>• Daily cap: 10 spins</div>
-        <div class="rules-subh">Reward Rates</div>
-        <div>• 50 KICK: 30%</div>
-        <div>• 100 KICK: 25%</div>
-        <div>• 200 KICK: 10%</div>
-        <div>• 2x Quiz today: 10%</div>
-        <div>• 3x Referral today: 5%</div>
-        <div>• Rising Box Ticket: 5%</div>
-        <div>• Nothing: 15%</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">8. WORLD CUP 2026 SNAPSHOT DISTRIBUTION</div>
-        <div>Total Referral Champion Pool: <strong style="color:var(--bl)">1,000,000 WC26</strong></div>
-        <div>Distribution multipliers:</div>
-        <div>• Rank 1: ×10</div>
-        <div>• Rank 2–5: ×5</div>
-        <div>• Rank 6–10: ×2.5</div>
-        <div>• Rank 11–100: ×1</div>
-        <div>Final ranking is determined at the official snapshot time announced publicly.</div>
-        <div>Referral snapshot allocation is subject to compliance, anti-sybil and DAO-approved policy.</div>
-      </div>
-
-      <div class="rules-sec">
-        <div class="rules-h">9. WC26 TOKEN AIRDROP STRUCTURE</div>
-        <div class="rules-subh">9.1 Unlock Schedule</div>
-        <div>• 20% unlocked three (3) days prior to Mystery Box Sale</div>
-        <div>• 80% vested linearly over ninety (90) days</div>
-        <div class="rules-subh">9.2 Tier Qualification</div>
-        <div class="rules-box">
-          <div><strong style="color:var(--g)">Rising Tier</strong></div>
-          <div>25,000 KICK · Whitelist access · 2.5% discount · Maximum 25 boxes per user</div>
-          <div style="margin-top:4px"><strong style="color:var(--y)">Elite Tier</strong></div>
-          <div>100,000 KICK · Whitelist access · 5% discount · Maximum 25 boxes per user</div>
-          <div style="margin-top:4px"><strong style="color:var(--pu)">Legacy Tier</strong></div>
-          <div>250,000 KICK · Whitelist access · 10% discount · Maximum 10 boxes per user</div>
-          <div style="margin-top:4px"><strong style="color:var(--rd)">Vanguard Tier</strong></div>
-          <div>1,000,000 KICK · Whitelist access · 20% discount · Maximum 10 boxes per user</div>
+        <div class="rules-hero-badges">
+          <span class="rules-badge live">Phase 1 - Viral Activation (Live)</span>
+          <span class="rules-badge future">Phase 2 - Tournament Ignition (Pre-announced)</span>
         </div>
       </div>
 
       <div class="rules-sec">
-        <div class="rules-h">10. PENALTY CHALLENGE</div>
-        <div>Two sides take turns kicking one penalty each, for a total of five (5) kicks per side.</div>
+        <div class="rules-h">1. Token Framework &amp; Pools</div>
+        <ul class="rules-list">
+          <li><strong style="color:var(--pw)">KICK</strong> is an off-chain participation point earned from mini games and tasks; it drives ranking, tier progression and allocation logic.</li>
+          <li><strong style="color:var(--pw)">WC26</strong> is the only on-chain token with fixed supply and non-inflationary rules defined in the Whitepaper.</li>
+        </ul>
 
-        <div class="rules-subh">Scoring Rules</div>
-        <div>• When Side A scores: +1 goal is awarded to Side A; Side B score remains unchanged.</div>
-        <div>• When Side A misses: no change to either score.</div>
-        <div>• When Side B scores: +1 goal is awarded to Side B; Side A score remains unchanged.</div>
-        <div>• When Side B misses: no change to either score.</div>
+        <div class="rules-pool-grid">
+          <div class="rules-pool">
+            <div class="nm">1) National War Bonus Pool</div>
+            <div class="val">1,000,000 WC26</div>
+            <div class="ds">Rewards top nations and qualified top contributors in Nation Wars.</div>
+          </div>
+          <div class="rules-pool">
+            <div class="nm">2) Referral Champion Pool</div>
+            <div class="val">1,000,000 WC26</div>
+            <div class="ds">Rewards Top 100 global referrers at the official World Cup 2026 snapshot.</div>
+          </div>
+          <div class="rules-pool">
+            <div class="nm">3) Mini Games Conversion Pool</div>
+            <div class="val">10,000,000 WC26</div>
+            <div class="ds">Dedicated pool to convert eligible KICK from approved mini games and tasks into WC26.</div>
+          </div>
+        </div>
 
-        <div class="rules-subh">Sudden Death</div>
-        <div>If the score remains tied after five (5) kicks each, the match proceeds to Sudden Death.</div>
-        <div>• Both sides continue taking one kick each alternately.</div>
-        <div>• The first side to score while the opponent misses wins immediately.</div>
-        <div>• Maximum of five (5) sudden death rounds.</div>
-
-        <div class="rules-subh">SOLO MODE (Player vs AI)</div>
-        <div>• Play against the system (AI-controlled opponent).</div>
-        <div>• 3 free matches per day.</div>
-        <div>• Additional matches cost 500 KICK per match.</div>
-        <div>• Win: +2,000 KICK.</div>
-        <div>• Loss: +0 KICK.</div>
-
-        <div class="rules-subh">PVP MODE (Player vs Player)</div>
-        <div>• Real player vs real player.</div>
-        <div>• No AI interference.</div>
-        <div>• No daily limit (subject to user balance).</div>
-        <div>• Win: +2,000 KICK.</div>
-        <div>• Loss: -2,500 KICK.</div>
-        <div>• 500 KICK is permanently burned per match.</div>
+        <div class="rules-foot">All allocations are fixed unless changed by an official governance decision.</div>
       </div>
 
       <div class="rules-sec">
-        <div class="rules-h">11. COMPLIANCE &amp; GOVERNANCE</div>
-        <div>• Anti-cheat and Anti-Sybil monitoring is continuously enforced</div>
-        <div>• Allocation rules may be updated through official governance announcement</div>
-        <div>• Snapshot timing will be publicly disclosed</div>
-        <div>• All rewards remain subject to validation and fair-play compliance review</div>
-        <div style="margin-top:6px">This document constitutes the official reward allocation framework of WC26 Fantasy.</div>
+        <div class="rules-h">2. How Your KICK Becomes WC26 (Future Conversion Logic)</div>
+
+        <div class="rules-subh">2.1 Conversion Formula</div>
+        <div class="rules-formula">WC26 per user = (Personal KICK ÷ Total System KICK) × 10,000,000 WC26</div>
+
+        <div class="rules-subh">2.2 Eligibility Requirements</div>
+        <ul class="rules-list">
+          <li>Accumulate at least <strong style="color:var(--pw)">10,000 KICK</strong>.</li>
+          <li>Maintain at least <strong style="color:var(--pw)">7 active days</strong>.</li>
+          <li>Successfully pass Anti-Sybil and compliance checks.</li>
+        </ul>
+        <div class="rules-note">Failing any condition means KICK remains in-app but generates no WC26 in that conversion event.</div>
+
+        <div class="rules-subh">2.3 Per-User Conversion Cap</div>
+        <ul class="rules-list">
+          <li>Maximum counted KICK per user: <strong style="color:var(--pw)">500,000 KICK</strong>.</li>
+          <li>KICK above 500k does not generate additional WC26.</li>
+          <li>This cap improves fairness and reduces extreme concentration.</li>
+        </ul>
+
+        <div class="rules-subh">2.4 Tiers &amp; Mystery Boxes</div>
+        <div class="rules-tier-grid">
+          <div class="rules-tier">
+            <div class="tt">Rising</div>
+            <div class="tv">25,000 KICK</div>
+            <div class="td">Whitelist access · 2.5% discount · up to 25 boxes/user.</div>
+          </div>
+          <div class="rules-tier">
+            <div class="tt">Elite</div>
+            <div class="tv">100,000 KICK</div>
+            <div class="td">Whitelist access · 5% discount · up to 25 boxes/user.</div>
+          </div>
+          <div class="rules-tier">
+            <div class="tt">Legacy</div>
+            <div class="tv">250,000 KICK</div>
+            <div class="td">Whitelist access · 10% discount · up to 10 boxes/user.</div>
+          </div>
+          <div class="rules-tier">
+            <div class="tt">Vanguard</div>
+            <div class="tv">1,000,000 KICK</div>
+            <div class="td">Whitelist access · 20% discount · up to 10 boxes/user.</div>
+          </div>
+        </div>
+        <div class="rules-note">A Mystery Box matrix then assigns different box counts to programs like WAR Champion, Referral, Spin Lottery, Quiz Leaderboard and Final Countdown Events.</div>
+
+        <div class="rules-subh">2.5 Referral &amp; Nation Bonus at Snapshot</div>
+        <ul class="rules-list">
+          <li><strong style="color:var(--pw)">Referral Champion Pool (1,000,000 WC26)</strong>: Rank 1 x10; Rank 2-5 x5; Rank 6-10 x2.5; Rank 11-100 x1.</li>
+          <li><strong style="color:var(--pw)">National War Bonus Pool (1,000,000 WC26)</strong>: Top 5 nations receive 5 Legacy Boxes for Top 5 players, plus 1,000,000 WC26 for Top 50 players across those nations.</li>
+          <li>Top-50 personal multipliers: Top 1 x5; Top 2-5 x3; Top 6-10 x2; Top 11-50 x1.</li>
+        </ul>
+      </div>
+
+      <div class="rules-sec">
+        <div class="rules-h">3. Phase 1 - How You Earn KICK (Viral Activation)</div>
+        <div>Phase 1 focuses on daily engagement, nation competition and social growth. Everything below is live gameplay.</div>
+
+        <div class="rules-subh">3.1 Daily Lucky Spin</div>
+        <div class="rules-box">
+          <div style="color:var(--pw);font-weight:700;margin-bottom:3px">Access Rules</div>
+          <ul class="rules-list" style="margin-top:0">
+            <li>1 free spin per day.</li>
+            <li>Invite 1 successfully registered user: +1 spin.</li>
+            <li>Share Nation War ranking: +1 spin.</li>
+            <li>Current app cap: <strong style="color:var(--pw)">5 spins/day</strong>.</li>
+          </ul>
+        </div>
+        <div class="rules-box">
+          <div style="color:var(--pw);font-weight:700;margin-bottom:3px">Reward Rates</div>
+          <ul class="rules-list" style="margin-top:0">
+            <li>50 KICK - 30%</li>
+            <li>100 KICK - 25%</li>
+            <li>200 KICK - 10%</li>
+            <li>2x Quiz today - 10%</li>
+            <li>3x Referral today - 5%</li>
+            <li>Rising Box Ticket - 5%</li>
+            <li>Nothing - 15%</li>
+          </ul>
+        </div>
+
+        <div class="rules-subh">3.2 Penalty Challenge</div>
+        <ul class="rules-list">
+          <li>Base match: two sides alternate penalties, five kicks per side.</li>
+          <li>When one side scores, that side gains +1 goal while opponent remains unchanged.</li>
+          <li>When one side misses, no score changes for either side.</li>
+          <li>Sudden death starts if tied after five kicks each.</li>
+          <li>In sudden death, both sides continue alternating one kick each.</li>
+          <li>First side to score while the opponent misses wins immediately (max five sudden-death rounds).</li>
+        </ul>
+        <div class="rules-box">
+          <div style="color:var(--pw);font-weight:700;margin-bottom:3px">Solo Mode - Player vs AI</div>
+          <ul class="rules-list" style="margin-top:0">
+            <li>Play against a system-controlled goalkeeper or shooter.</li>
+            <li>3 free matches per day.</li>
+            <li>Extra matches cost 500 KICK each.</li>
+            <li>Win: +2,000 KICK.</li>
+            <li>Loss: +0 KICK.</li>
+          </ul>
+        </div>
+        <div class="rules-box">
+          <div style="color:var(--pw);font-weight:700;margin-bottom:3px">PvP Mode - Player vs Player</div>
+          <ul class="rules-list" style="margin-top:0">
+            <li>Real player vs real player, no AI influence.</li>
+            <li>No daily limit (subject to user balance).</li>
+            <li>Win: +2,000 KICK.</li>
+            <li>Loss: -2,500 KICK.</li>
+            <li>500 KICK is permanently burned per match.</li>
+          </ul>
+        </div>
+
+        <div class="rules-subh">3.3 Nation Wars</div>
+        <div class="rules-formula">WAR POINT = Total Nation KICK ÷ Number of Eligible Users</div>
+        <ul class="rules-list">
+          <li>Eligible user: at least 5,000 KICK and active for 7+ days.</li>
+          <li>Nation lock: switch nation only after 7 days.</li>
+          <li>Weekly Top 5 nations: +5% KICK bonus (weekly earned KICK basis) + 5 Rising Boxes/nation for Top 5 players.</li>
+          <li>World Cup 2026 kickoff rulebook reward: Top 5 nations receive 5 Legacy Boxes for Top 5 players + 1,000,000 WC26 for Top 50 players across those nations.</li>
+        </ul>
+
+        <div class="rules-subh">3.4 Engage &amp; Earn Tasks</div>
+        <ul class="rules-list">
+          <li>Task reward cap per account: <strong style="color:var(--pw)">15,000 KICK</strong> (tasks only, not game earnings).</li>
+          <li>All actions are subject to verification, Anti-Sybil screening and compliance review.</li>
+        </ul>
+        <div class="rules-box">
+          <div style="color:var(--pw);font-weight:700;margin-bottom:3px">Main Task Categories (Examples)</div>
+          <ul class="rules-list" style="margin-top:0">
+            <li>Telegram (up to ~8,000 KICK): join global/national channels, join nation group and post 5 meaningful messages, join at least 1 official WAR vote.</li>
+            <li>Growth Actions (3,000 KICK): invite 3 active users (each active for at least 3 days), then invite 5 active users.</li>
+            <li>Amplification (1,000 KICK): share the WAR leaderboard and share a Pitch Pulse signal.</li>
+            <li>Twitter/X (3,000 KICK): follow official WC26, retweet selected post, like + meaningful comment, post original tweet with #WC26.</li>
+            <li>Facebook / Instagram (2,000 KICK): follow official page/profile, share official post, leave meaningful compliant comments, create original WC26 content.</li>
+            <li>YouTube (1,000 KICK): subscribe, watch at least 2 minutes (verified), comment on latest upload.</li>
+            <li>TikTok (1,000 KICK): follow official account, share official video, create original WC26-themed content.</li>
+          </ul>
+        </div>
+        <div class="rules-note">In app display example: 0 of 28 tasks · CAP 15,000 KICK.</div>
+
+        <div class="rules-subh">3.5 Referral Battle Royale</div>
+        <div class="rules-box">
+          <div style="color:var(--pw);font-weight:700;margin-bottom:3px">Instant Incentives</div>
+          <ul class="rules-list" style="margin-top:0">
+            <li>F1 registration: +200 KICK.</li>
+            <li>F1 active 7 days: +500 KICK.</li>
+            <li>F2 registration: +50 KICK.</li>
+            <li>F2 active 7 days: +100 KICK.</li>
+          </ul>
+        </div>
+        <ul class="rules-list">
+          <li>Season duration: 7 days per season.</li>
+          <li>Top 100 referrers: 10K-100K KICK + 5 Elite Boxes.</li>
+          <li>Rank 1 receives 1 extra Legacy Box.</li>
+          <li>Maximum 50 F1 counted per season; each F1 must reach &ge;1,000 KICK.</li>
+          <li>Fraudulent, automated, or coordinated manipulation causes disqualification.</li>
+        </ul>
+        <div class="rules-note">These rankings are also used later to split the 1,000,000 WC26 Referral Champion Pool at snapshot.</div>
+      </div>
+
+      <div class="rules-sec">
+        <div class="rules-h">4. Compliance &amp; Governance</div>
+        <ul class="rules-list">
+          <li>Continuous anti-cheat and Anti-Sybil monitoring is enforced.</li>
+          <li>Allocation rules can be updated only via official governance announcements.</li>
+          <li>Snapshot timing for conversion and bonus pools will be publicly disclosed.</li>
+          <li>All rewards remain subject to validation and fair-play compliance review.</li>
+        </ul>
+        <div class="rules-foot">This Rulebook defines the official reward allocation framework for WC26 Fantasy - Nation Journey Airdrop.</div>
       </div>
     </div>
     <button class="btn b-y" onclick="showToast('📋 Rules summary copied!')">📋 Copy Rules Summary</button>
