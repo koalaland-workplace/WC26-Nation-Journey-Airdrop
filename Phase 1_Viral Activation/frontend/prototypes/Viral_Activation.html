@@ -1115,13 +1115,13 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   overflow:hidden;text-overflow:ellipsis;
 }
 .hdr-ring-wrap{
-  border:none;background:transparent;position:relative;width:44px;height:44px;cursor:pointer;
-  flex-shrink:0;margin-top:1px;padding:0;
+  border:none;background:transparent;position:relative;width:51px;height:51px;cursor:pointer;
+  flex-shrink:0;align-self:center;margin-top:0;padding:0;
 }
-.hdr-ring-wrap svg{width:44px;height:44px;transform:rotate(-90deg);}
+.hdr-ring-wrap svg{width:51px;height:51px;transform:rotate(-90deg);}
 .hdr-ring-txt{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:var(--font-mono);font-size:9px;color:var(--pw);
+  font-family:var(--font-mono);font-size:10.3px;color:var(--pw);
 }
 .hdr-ring-wrap.pulse{animation:hdrPulse 1.2s ease-in-out infinite;}
 @keyframes hdrPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
