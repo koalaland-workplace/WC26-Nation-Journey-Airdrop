@@ -1554,13 +1554,15 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .pique-q-btn:hover{background:rgba(30,136,229,.16);border-color:rgba(30,136,229,.55);}
 .pique-stage{
   width:min(36.4vw,119px);
-  margin:0 auto 6px;
+  margin:-4px auto -2px;
   position:relative;
   aspect-ratio:1.25/1;
   display:flex;
   align-items:center;
   justify-content:center;
   pointer-events:none;
+  transform:scale(.8);
+  transform-origin:center center;
 }
 .pique-goal{
   position:absolute;
