@@ -3314,6 +3314,9 @@ function dayDiff(a,b){
 function fmtMillions(v){
   return (Math.max(0,Number(v)||0)/1000000).toFixed(1)+'M';
 }
+function fmtKickFull(v){
+  return Math.max(0,Math.floor(Number(v)||0)).toLocaleString('en-US');
+}
 function getTierState(){
   var kick=Math.max(0,Math.floor(Number(S.kick)||0));
   var levels=[
