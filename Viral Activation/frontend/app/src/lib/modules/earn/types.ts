@@ -17,6 +17,8 @@ export interface EarnTask {
   points: number;
   actionLabel: string;
   tone: EarnTaskTone;
+  phase?: string;
+  capPerDay?: number | null;
 }
 
 export interface EarnClaimResult {
@@ -43,7 +45,7 @@ export interface EarnStateResponse {
 export interface EarnClaimRequest {
   sessionId: string;
   taskId: string;
-  points: number;
+  points?: number;
 }
 
 export interface EarnClaimResponse {
@@ -56,4 +58,21 @@ export interface EarnClaimResponse {
     kick: number;
     dailyEarned: number;
   };
+}
+
+export interface EarnChannelItem {
+  id: string;
+  platform: string;
+  name: string;
+  url: string;
+  icon: string;
+  tasks: number;
+  kick: number;
+}
+
+export interface EarnCatalogResponse {
+  ok: boolean;
+  categories: EarnTaskCategory[];
+  tasks: EarnTask[];
+  channels: EarnChannelItem[];
 }

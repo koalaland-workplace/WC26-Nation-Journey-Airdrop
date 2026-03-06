@@ -40,7 +40,7 @@ const querySessionSchema = z.object({
 const earnClaimSchema = z.object({
   sessionId: sessionIdSchema,
   taskId: z.string().trim().min(1).max(120),
-  points: z.coerce.number().int().min(1).max(50000)
+  points: z.coerce.number().int().min(1).max(50000).optional()
 });
 
 const referralBoostSchema = z.object({
@@ -98,6 +98,115 @@ function boostsView(view: ReturnType<typeof sessionView>) {
     quizBoostMult: view.quizBoostMult,
     refBoostMult: view.refBoostMult
   };
+}
+
+type EarnCatalogTone = "g" | "y" | "b" | "r";
+
+interface EarnCatalogCategory {
+  id: string;
+  icon: string;
+  title: string;
+  totalLabel: string;
+  tone: EarnCatalogTone;
+}
+
+interface EarnCatalogTask {
+  id: string;
+  categoryId: string;
+  icon: string;
+  name: string;
+  description: string;
+  points: number;
+  actionLabel: string;
+  tone: EarnCatalogTone;
+  phase: string;
+  capPerDay: number | null;
+}
+
+const categoryMetaMap: Record<string, { icon: string; title: string; tone: EarnCatalogTone }> = {
+  telegram: { icon: "📣", title: "Telegram", tone: "g" },
+  x: { icon: "🐦", title: "Twitter / X", tone: "y" },
+  meta: { icon: "📸", title: "Facebook / Instagram", tone: "b" },
+  youtube: { icon: "▶️", title: "YouTube", tone: "r" },
+  tiktok: { icon: "🎬", title: "TikTok", tone: "y" },
+  growth: { icon: "🚀", title: "Growth Actions", tone: "g" },
+  amplification: { icon: "📢", title: "Amplification", tone: "b" },
+  daily: { icon: "✅", title: "Daily Tasks", tone: "g" }
+};
+
+const categoryOrder = ["telegram", "x", "meta", "youtube", "tiktok", "growth", "amplification", "daily"] as const;
+
+function safeSlug(value: string): string {
+  const normalized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "daily";
+}
+
+function normalizeCategoryId(rawCategory: string, code: string): string {
+  const category = rawCategory.toLowerCase();
+  const taskCode = code.toLowerCase();
+  const merged = `${category} ${taskCode}`;
+
+  if (merged.includes("telegram") || merged.includes("tg-") || merged.includes(" tg")) return "telegram";
+  if (merged.includes("twitter") || merged.includes(" x") || merged.startsWith("x-")) return "x";
+  if (merged.includes("facebook") || merged.includes("instagram") || merged.includes("meta")) return "meta";
+  if (merged.includes("youtube") || merged.includes("yt-")) return "youtube";
+  if (merged.includes("tiktok") || merged.includes("tt-")) return "tiktok";
+  if (merged.includes("invite") || merged.includes("referral") || merged.includes("growth")) return "growth";
+  if (merged.includes("amplification") || merged.includes("share")) return "amplification";
+  if (merged.includes("daily")) return "daily";
+
+  return safeSlug(rawCategory);
+}
+
+function categoryMeta(categoryId: string): { icon: string; title: string; tone: EarnCatalogTone } {
+  const known = categoryMetaMap[categoryId];
+  if (known) return known;
+
+  const title = categoryId
+    .split("-")
+    .filter((chunk) => chunk.length > 0)
+    .map((chunk) => chunk[0].toUpperCase() + chunk.slice(1))
+    .join(" ");
+  return {
+    icon: "🎯",
+    title: title || "Tasks",
+    tone: "g"
+  };
+}
+
+function inferActionLabel(code: string, name: string): string {
+  const text = `${code} ${name}`.toLowerCase();
+  if (text.includes("retweet")) return "RT";
+  if (text.includes("follow")) return "FOLLOW";
+  if (text.includes("join")) return "JOIN";
+  if (text.includes("invite")) return "INVITE";
+  if (text.includes("comment")) return "COMMENT";
+  if (text.includes("watch")) return "WATCH";
+  if (text.includes("share")) return "SHARE";
+  if (text.includes("vote")) return "VOTE";
+  if (text.includes("create")) return "CREATE";
+  if (text.includes("post")) return "POST";
+  return "CLAIM";
+}
+
+function inferTaskIcon(code: string, name: string, fallbackIcon: string): string {
+  const text = `${code} ${name}`.toLowerCase();
+  if (text.includes("retweet")) return "🔁";
+  if (text.includes("follow")) return "👤";
+  if (text.includes("join") && text.includes("group")) return "💬";
+  if (text.includes("join") && text.includes("channel")) return "🌐";
+  if (text.includes("join")) return "📣";
+  if (text.includes("invite")) return "👥";
+  if (text.includes("comment")) return "🗨️";
+  if (text.includes("watch")) return "⏱️";
+  if (text.includes("share")) return "📤";
+  if (text.includes("vote")) return "🗳️";
+  if (text.includes("create")) return "🎥";
+  if (text.includes("post")) return "📝";
+  return fallbackIcon;
 }
 
 export const appGameRoutes: FastifyPluginAsync = async (app) => {
@@ -171,16 +280,103 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
+  app.get("/api/earn/tasks/catalog", async () => {
+    const [missions, channels] = await Promise.all([
+      app.prisma.mission.findMany({
+        where: { isActive: true },
+        orderBy: [{ category: "asc" }, { rewardKick: "desc" }, { createdAt: "asc" }]
+      }),
+      app.prisma.socialChannel.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+      })
+    ]);
+
+    const tasks: EarnCatalogTask[] = missions.map((mission) => {
+      const categoryId = normalizeCategoryId(mission.category, mission.code);
+      const meta = categoryMeta(categoryId);
+      const descriptionParts = [mission.phase];
+      if (mission.capPerDay !== null) {
+        descriptionParts.push(`CAP/day ${mission.capPerDay}`);
+      }
+      return {
+        id: mission.code,
+        categoryId,
+        icon: inferTaskIcon(mission.code, mission.name, meta.icon),
+        name: mission.name,
+        description: descriptionParts.join(" · "),
+        points: mission.rewardKick,
+        actionLabel: inferActionLabel(mission.code, mission.name),
+        tone: meta.tone,
+        phase: mission.phase,
+        capPerDay: mission.capPerDay
+      };
+    });
+
+    const totalByCategory = new Map<string, number>();
+    for (const task of tasks) {
+      totalByCategory.set(task.categoryId, (totalByCategory.get(task.categoryId) ?? 0) + task.points);
+    }
+
+    const categoryIds = [...new Set(tasks.map((task) => task.categoryId))];
+    categoryIds.sort((left, right) => {
+      const leftIndex = categoryOrder.indexOf(left as (typeof categoryOrder)[number]);
+      const rightIndex = categoryOrder.indexOf(right as (typeof categoryOrder)[number]);
+      const leftRank = leftIndex === -1 ? 999 : leftIndex;
+      const rightRank = rightIndex === -1 ? 999 : rightIndex;
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return left.localeCompare(right);
+    });
+
+    const categories: EarnCatalogCategory[] = categoryIds.map((categoryId) => {
+      const meta = categoryMeta(categoryId);
+      const total = totalByCategory.get(categoryId) ?? 0;
+      return {
+        id: categoryId,
+        icon: meta.icon,
+        title: meta.title,
+        totalLabel: `+${total.toLocaleString("en-US")} KICK`,
+        tone: meta.tone
+      };
+    });
+
+    return {
+      ok: true,
+      categories,
+      tasks,
+      channels: channels.map((channel) => ({
+        id: channel.id,
+        platform: channel.platform,
+        name: channel.name,
+        url: channel.url,
+        icon: channel.icon ?? "🔗",
+        tasks: channel.tasks,
+        kick: channel.kick
+      }))
+    };
+  });
+
   app.post("/api/earn/tasks/claim", async (request, reply) => {
     const body = earnClaimSchema.parse(request.body ?? {});
     const session = await getOrCreateGameSession(app.prisma, body.sessionId);
     ensureToday(session.state);
 
+    const mission = await app.prisma.mission.findFirst({
+      where: {
+        code: body.taskId,
+        isActive: true
+      }
+    });
+    const taskPoints = mission?.rewardKick ?? body.points ?? 0;
+    if (taskPoints <= 0) {
+      return reply.status(400).send({ ok: false, error: "task_not_found" });
+    }
+
     const alreadyClaimed = Boolean(session.state.earn.claimedTasks[body.taskId]);
     let appliedKick = 0;
     if (!alreadyClaimed) {
       session.state.earn.claimedTasks[body.taskId] = Date.now();
-      appliedKick = earnApplyKick(session.state, body.points);
+      appliedKick = earnApplyKick(session.state, taskPoints);
     }
 
     await persistGameSession(
@@ -195,19 +391,16 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
         : undefined
     );
 
-    if (!alreadyClaimed && appliedKick > 0) {
-      const mission = await app.prisma.mission.findUnique({ where: { code: body.taskId } });
-      if (mission) {
-        await app.prisma.missionProgress.create({
-          data: {
-            missionId: mission.id,
-            userId: session.user.id,
-            status: "completed",
-            progress: 100,
-            awardedKick: appliedKick
-          }
-        });
-      }
+    if (!alreadyClaimed && appliedKick > 0 && mission) {
+      await app.prisma.missionProgress.create({
+        data: {
+          missionId: mission.id,
+          userId: session.user.id,
+          status: "completed",
+          progress: 100,
+          awardedKick: appliedKick
+        }
+      });
     }
 
     const view = sessionView(session.state);

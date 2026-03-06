@@ -1240,6 +1240,46 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.earn-channel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--pw);
+  text-decoration: none;
+}
+
+.earn-channel-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.earn-channel-icon {
+  width: 18px;
+  text-align: center;
+}
+
+.earn-channel-name {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.earn-channel-platform {
+  font-size: 9px;
+  color: var(--c-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 .info-actions-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

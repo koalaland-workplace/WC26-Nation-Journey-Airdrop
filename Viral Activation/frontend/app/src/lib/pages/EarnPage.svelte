@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { EARN_TASKS, EARN_TASK_CAP, EARN_TASK_CATEGORIES } from "../modules/earn/data";
+  import { EARN_TASK_CAP } from "../modules/earn/data";
   import { toneButtonClass } from "../modules/earn/utils";
   import { earnStore } from "../stores/earn.store";
   import { sessionStore } from "../stores/session.store";
@@ -24,14 +24,16 @@
 
   $: claimedTaskSet = new Set($earnStore.claimedTaskIds);
   $: taskDoneCount = $earnStore.claimedTaskIds.length;
-  $: taskTotal = EARN_TASKS.length;
+  $: taskTotal = $earnStore.tasks.length;
   $: progressPct = taskTotal > 0 ? Math.round((taskDoneCount / taskTotal) * 100) : 0;
   $: earnRingOffset = 220 * (1 - Math.min(100, progressPct) / 100);
 
-  $: groupedTasks = EARN_TASK_CATEGORIES.map((category) => ({
-    ...category,
-    tasks: EARN_TASKS.filter((task) => task.categoryId === category.id)
-  }));
+  $: groupedTasks = $earnStore.categories
+    .map((category) => ({
+      ...category,
+      tasks: $earnStore.tasks.filter((task) => task.categoryId === category.id)
+    }))
+    .filter((group) => group.tasks.length > 0);
 
   async function claim(task: EarnTask): Promise<void> {
     const result = await earnStore.claimTask(sessionId, task);
@@ -139,6 +141,23 @@
       <button class="btn b-g" type="button" on:click={() => onNavigate("spin")}>GO TO SPIN</button>
     </div>
   </div>
+
+  {#if $earnStore.channels.length > 0}
+    <div class="card acc-b">
+      <div class="info-head">📡 Official Channels</div>
+      <div class="info-list">
+        {#each $earnStore.channels as channel}
+          <a class="earn-channel-item" href={channel.url} target="_blank" rel="noreferrer">
+            <div class="earn-channel-left">
+              <span class="earn-channel-icon">{channel.icon}</span>
+              <span class="earn-channel-name">{channel.name}</span>
+            </div>
+            <span class="earn-channel-platform">{channel.platform}</span>
+          </a>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   {#each groupedTasks as category}
     <div class="tcat">

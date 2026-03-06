@@ -1,5 +1,6 @@
 import { httpGet, httpPost } from "../../api/http";
 import type {
+  EarnCatalogResponse,
   EarnClaimRequest,
   EarnClaimResponse,
   EarnStateResponse
@@ -7,6 +8,11 @@ import type {
 
 const EARN_TASKS_STATE_ENDPOINT = "/api/earn/tasks/state";
 const EARN_TASKS_CLAIM_ENDPOINT = "/api/earn/tasks/claim";
+const EARN_TASKS_CATALOG_ENDPOINT = "/api/earn/tasks/catalog";
+
+export async function fetchEarnCatalog(): Promise<EarnCatalogResponse> {
+  return httpGet<EarnCatalogResponse>(EARN_TASKS_CATALOG_ENDPOINT);
+}
 
 export async function fetchEarnState(sessionId: string): Promise<EarnStateResponse> {
   const encodedSessionId = encodeURIComponent(sessionId);

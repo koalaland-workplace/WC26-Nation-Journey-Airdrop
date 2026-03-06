@@ -1,8 +1,8 @@
 import { get, writable } from "svelte/store";
-import { fetchEarnState, claimEarnTask } from "../modules/earn/api";
-import { EARN_TASK_CAP } from "../modules/earn/data";
+import { fetchEarnCatalog, fetchEarnState, claimEarnTask } from "../modules/earn/api";
+import { EARN_TASK_CAP, EARN_TASK_CATEGORIES, EARN_TASKS } from "../modules/earn/data";
 import { activateReferralBoost, fetchReferralState } from "../modules/referral/api";
-import type { EarnClaimResult, EarnTask } from "../modules/earn/types";
+import type { EarnChannelItem, EarnClaimResult, EarnTask, EarnTaskCategory } from "../modules/earn/types";
 import type { ReferralState } from "../modules/referral/types";
 import { sessionStore } from "./session.store";
 
@@ -11,6 +11,9 @@ export type EarnStatus = "idle" | "loading" | "ready" | "error";
 export interface EarnState {
   status: EarnStatus;
   taskCap: number;
+  categories: EarnTaskCategory[];
+  tasks: EarnTask[];
+  channels: EarnChannelItem[];
   claimedTaskIds: string[];
   claimedKick: number;
   referral: ReferralState;
@@ -29,6 +32,9 @@ const DEFAULT_REFERRAL_STATE: ReferralState = {
 const initialState: EarnState = {
   status: "idle",
   taskCap: EARN_TASK_CAP,
+  categories: EARN_TASK_CATEGORIES,
+  tasks: EARN_TASKS,
+  channels: [],
   claimedTaskIds: [],
   claimedKick: 0,
   referral: DEFAULT_REFERRAL_STATE,
@@ -53,6 +59,33 @@ function normalizeReferral(referral: ReferralState): ReferralState {
   };
 }
 
+function normalizeTask(task: EarnTask): EarnTask {
+  const points = Math.max(0, Math.floor(Number(task.points) || 0));
+  const tone = task.tone === "y" || task.tone === "b" || task.tone === "r" ? task.tone : "g";
+  return {
+    ...task,
+    id: String(task.id),
+    categoryId: String(task.categoryId || "daily"),
+    icon: String(task.icon || "🎯"),
+    name: String(task.name || "Task"),
+    description: String(task.description || ""),
+    points,
+    actionLabel: String(task.actionLabel || "CLAIM"),
+    tone
+  };
+}
+
+function normalizeCategory(category: EarnTaskCategory): EarnTaskCategory {
+  const tone = category.tone === "y" || category.tone === "b" || category.tone === "r" ? category.tone : "g";
+  return {
+    id: String(category.id || "daily"),
+    icon: String(category.icon || "🎯"),
+    title: String(category.title || "Tasks"),
+    totalLabel: String(category.totalLabel || "+0 KICK"),
+    tone
+  };
+}
+
 function createEarnStore() {
   const { subscribe, set, update } = writable<EarnState>(initialState);
   let initPromise: Promise<void> | null = null;
@@ -64,13 +97,29 @@ function createEarnStore() {
       update((state) => ({ ...state, status: "loading", errorMessage: null }));
 
       if (!sessionId) {
-        update((state) => ({ ...state, status: "ready", errorMessage: null }));
+        try {
+          const catalogPayload = await fetchEarnCatalog();
+          update((state) => ({
+            ...state,
+            status: "ready",
+            categories:
+              catalogPayload.categories.length > 0
+                ? catalogPayload.categories.map(normalizeCategory)
+                : EARN_TASK_CATEGORIES,
+            tasks: catalogPayload.tasks.length > 0 ? catalogPayload.tasks.map(normalizeTask) : EARN_TASKS,
+            channels: catalogPayload.channels ?? [],
+            errorMessage: null
+          }));
+        } catch {
+          update((state) => ({ ...state, status: "ready", errorMessage: null }));
+        }
         return;
       }
 
-      const [earnPayload, referralPayload] = await Promise.all([
+      const [earnPayload, referralPayload, catalogPayload] = await Promise.all([
         fetchEarnState(sessionId),
-        fetchReferralState(sessionId)
+        fetchReferralState(sessionId),
+        fetchEarnCatalog()
       ]);
 
       sessionStore.sync({ economy: earnPayload.economy });
@@ -79,6 +128,12 @@ function createEarnStore() {
         ...state,
         status: "ready",
         taskCap: Math.max(0, Math.floor(Number(earnPayload.earn.taskCap) || EARN_TASK_CAP)),
+        categories:
+          catalogPayload.categories.length > 0
+            ? catalogPayload.categories.map(normalizeCategory)
+            : EARN_TASK_CATEGORIES,
+        tasks: catalogPayload.tasks.length > 0 ? catalogPayload.tasks.map(normalizeTask) : EARN_TASKS,
+        channels: catalogPayload.channels ?? [],
         claimedKick: Math.max(0, Math.floor(Number(earnPayload.earn.claimedKick) || 0)),
         claimedTaskIds: earnPayload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
         referral: normalizeReferral(referralPayload.referral),
