@@ -381,6 +381,7 @@
 
   let page: PageId = "dashboard";
   let sidebarCollapsed = false;
+  let sidebarLogoBroken = false;
   let loading = false;
   let error = "";
   let toast = "";
@@ -1688,10 +1689,21 @@
 {:else}
   <nav id="sidebar" class:collapsed={sidebarCollapsed}>
     <button class="sb-logo" type="button" on:click={toggleSidebar}>
-      <div class="sb-logo-icon">W</div>
+      <div class="sb-logo-icon">
+        {#if sidebarLogoBroken}
+          <span class="sb-logo-fallback">W</span>
+        {:else}
+          <img
+            src="/assets/wc26-logo.png"
+            alt="WC26 logo"
+            class="sb-logo-img"
+            on:error={() => (sidebarLogoBroken = true)}
+          />
+        {/if}
+      </div>
       <div class="sb-logo-text">
-        <span>WC26 JOURNEY</span>
-        <span>AIRDROP ADMIN</span>
+        <span class="sb-logo-line-main">WC26 JOURNEY AIRDROP</span>
+        <span class="sb-logo-line-sub">MANAGEMENT PANEL</span>
       </div>
     </button>
 
