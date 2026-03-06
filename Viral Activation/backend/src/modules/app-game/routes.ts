@@ -43,6 +43,12 @@ const earnClaimSchema = z.object({
   points: z.coerce.number().int().min(1).max(50000).optional()
 });
 
+const earnVerifySchema = z.object({
+  sessionId: sessionIdSchema,
+  taskId: z.string().trim().min(1).max(120),
+  proof: z.string().trim().min(3).max(600).optional()
+});
+
 const referralBoostSchema = z.object({
   sessionId: sessionIdSchema,
   mult: z.coerce.number().int().min(1).max(10).default(3)
@@ -121,6 +127,9 @@ interface EarnCatalogTask {
   tone: EarnCatalogTone;
   phase: string;
   capPerDay: number | null;
+  isActive: boolean;
+  requiresVerification: boolean;
+  verificationHint: string | null;
 }
 
 const categoryMetaMap: Record<string, { icon: string; title: string; tone: EarnCatalogTone }> = {
@@ -211,6 +220,96 @@ function inferTaskIcon(code: string, name: string, fallbackIcon: string): string
   return fallbackIcon;
 }
 
+function missionRequiresVerification(code: string, name: string, category: string): boolean {
+  const text = `${code} ${name} ${category}`.toLowerCase();
+  if (text.includes("invite") || text.includes("referral")) return false;
+
+  const categoryId = normalizeCategoryId(category, code);
+  if (["telegram", "x", "meta", "youtube", "tiktok", "amplification"].includes(categoryId)) return true;
+
+  const verificationKeywords = [
+    "follow",
+    "join",
+    "subscribe",
+    "retweet",
+    "comment",
+    "watch",
+    "share",
+    "vote",
+    "post",
+    "create",
+    "like"
+  ];
+  return verificationKeywords.some((keyword) => text.includes(keyword));
+}
+
+function missionVerificationHint(code: string, category: string): string | null {
+  const categoryId = normalizeCategoryId(category, code);
+  if (categoryId === "telegram") return "Provide Telegram proof link (t.me/...)";
+  if (categoryId === "x") return "Provide X/Twitter profile or post link";
+  if (categoryId === "meta") return "Provide Facebook/Instagram profile or post link";
+  if (categoryId === "youtube") return "Provide YouTube video/comment/channel link";
+  if (categoryId === "tiktok") return "Provide TikTok profile or video link";
+  if (categoryId === "amplification") return "Provide public share link";
+  return "Provide proof link to verify completion";
+}
+
+function expectedProofHosts(code: string, category: string): string[] {
+  const categoryId = normalizeCategoryId(category, code);
+  if (categoryId === "telegram") return ["t.me", "telegram.me", "telegram.org"];
+  if (categoryId === "x") return ["x.com", "twitter.com"];
+  if (categoryId === "meta") return ["facebook.com", "instagram.com"];
+  if (categoryId === "youtube") return ["youtube.com", "youtu.be"];
+  if (categoryId === "tiktok") return ["tiktok.com"];
+  return [];
+}
+
+function extractProofHostname(proof: string): string | null {
+  const raw = proof.trim();
+  if (!raw) return null;
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    return new URL(candidate).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function validateMissionProof(
+  code: string,
+  category: string,
+  proof: string
+): { ok: true } | { ok: false; message: string } {
+  const trimmed = proof.trim();
+  if (trimmed.length < 6) {
+    return {
+      ok: false,
+      message: "Proof is too short. Please submit a valid link."
+    };
+  }
+
+  const hosts = expectedProofHosts(code, category);
+  if (hosts.length === 0) return { ok: true };
+
+  const hostname = extractProofHostname(trimmed);
+  if (!hostname) {
+    return {
+      ok: false,
+      message: `Proof must be a valid public link (${hosts.join(", ")})`
+    };
+  }
+
+  const matched = hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+  if (!matched) {
+    return {
+      ok: false,
+      message: `Proof link must belong to: ${hosts.join(", ")}`
+    };
+  }
+
+  return { ok: true };
+}
+
 export const appGameRoutes: FastifyPluginAsync = async (app) => {
   app.get("/health", async () => ({ ok: true, service: "wc26-app-game" }));
 
@@ -285,8 +384,7 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
   app.get("/api/earn/tasks/catalog", async () => {
     const [missions, channels] = await Promise.all([
       app.prisma.mission.findMany({
-        where: { isActive: true },
-        orderBy: [{ category: "asc" }, { rewardKick: "desc" }, { createdAt: "asc" }]
+        orderBy: [{ isActive: "desc" }, { category: "asc" }, { rewardKick: "desc" }, { createdAt: "asc" }]
       }),
       app.prisma.socialChannel.findMany({
         where: { isActive: true },
@@ -301,6 +399,7 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
       if (mission.capPerDay !== null) {
         descriptionParts.push(`CAP/day ${mission.capPerDay}`);
       }
+      const requiresVerification = missionRequiresVerification(mission.code, mission.name, mission.category);
       return {
         id: mission.code,
         categoryId,
@@ -311,13 +410,20 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
         actionLabel: inferActionLabel(mission.code, mission.name),
         tone: meta.tone,
         phase: mission.phase,
-        capPerDay: mission.capPerDay
+        capPerDay: mission.capPerDay,
+        isActive: mission.isActive,
+        requiresVerification,
+        verificationHint: requiresVerification
+          ? missionVerificationHint(mission.code, mission.category)
+          : null
       };
     });
 
     const totalByCategory = new Map<string, number>();
     for (const task of tasks) {
-      totalByCategory.set(task.categoryId, (totalByCategory.get(task.categoryId) ?? 0) + task.points);
+      if (task.isActive) {
+        totalByCategory.set(task.categoryId, (totalByCategory.get(task.categoryId) ?? 0) + task.points);
+      }
     }
 
     const categoryIds = [...new Set(tasks.map((task) => task.categoryId))];
@@ -358,17 +464,77 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
+  app.post("/api/earn/tasks/verify", async (request, reply) => {
+    const body = earnVerifySchema.parse(request.body ?? {});
+    const session = await getOrCreateGameSession(app.prisma, body.sessionId);
+    ensureToday(session.state);
+
+    const mission = await app.prisma.mission.findUnique({
+      where: { code: body.taskId }
+    });
+    if (!mission) {
+      return reply.status(404).send({ ok: false, error: "task_not_found", message: "Task not found." });
+    }
+    if (!mission.isActive) {
+      return reply
+        .status(409)
+        .send({ ok: false, error: "inactive_task", message: "Task is inactive and cannot be completed." });
+    }
+
+    const requiresVerification = missionRequiresVerification(mission.code, mission.name, mission.category);
+    if (requiresVerification) {
+      if (!body.proof) {
+        return reply
+          .status(400)
+          .send({ ok: false, error: "proof_required", message: "Please submit proof before claiming KICK." });
+      }
+      const proofCheck = validateMissionProof(mission.code, mission.category, body.proof);
+      if (!proofCheck.ok) {
+        return reply.status(400).send({ ok: false, error: "invalid_proof", message: proofCheck.message });
+      }
+    }
+
+    session.state.earn.verifiedTasks[body.taskId] = Date.now();
+    await persistGameSession(app.prisma, session);
+    const view = sessionView(session.state);
+
+    return {
+      ok: true,
+      taskId: body.taskId,
+      verified: true,
+      requiresVerification,
+      earn: view.earn,
+      economy: economyView(session.state.kick, session.state.economy.dailyEarned),
+      message: requiresVerification
+        ? "Task verification success. You can now claim KICK."
+        : "Task does not require verification."
+    };
+  });
+
   app.post("/api/earn/tasks/claim", async (request, reply) => {
     const body = earnClaimSchema.parse(request.body ?? {});
     const session = await getOrCreateGameSession(app.prisma, body.sessionId);
     ensureToday(session.state);
 
-    const mission = await app.prisma.mission.findFirst({
-      where: {
-        code: body.taskId,
-        isActive: true
-      }
+    const mission = await app.prisma.mission.findUnique({
+      where: { code: body.taskId }
     });
+    if (mission && !mission.isActive) {
+      return reply
+        .status(409)
+        .send({ ok: false, error: "inactive_task", message: "Task is inactive and cannot be completed." });
+    }
+
+    const requiresVerification = mission
+      ? missionRequiresVerification(mission.code, mission.name, mission.category)
+      : false;
+    const verifiedAt = session.state.earn.verifiedTasks[body.taskId] ?? 0;
+    if (mission && requiresVerification && verifiedAt <= 0) {
+      return reply
+        .status(409)
+        .send({ ok: false, error: "verify_required", message: "Please verify task completion before claim." });
+    }
+
     const taskPoints = mission?.rewardKick ?? body.points ?? 0;
     if (taskPoints <= 0) {
       return reply.status(400).send({ ok: false, error: "task_not_found" });

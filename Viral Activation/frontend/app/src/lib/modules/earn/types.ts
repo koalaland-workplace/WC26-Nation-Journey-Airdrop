@@ -19,6 +19,9 @@ export interface EarnTask {
   tone: EarnTaskTone;
   phase?: string;
   capPerDay?: number | null;
+  isActive?: boolean;
+  requiresVerification?: boolean;
+  verificationHint?: string | null;
 }
 
 export interface EarnClaimResult {
@@ -31,6 +34,7 @@ export interface EarnStatePayload {
   taskCap: number;
   claimedKick: number;
   claimedTaskIds: string[];
+  verifiedTaskIds?: string[];
 }
 
 export interface EarnStateResponse {
@@ -53,6 +57,25 @@ export interface EarnClaimResponse {
   taskId: string;
   alreadyClaimed: boolean;
   appliedKick: number;
+  earn: EarnStatePayload;
+  economy: {
+    kick: number;
+    dailyEarned: number;
+  };
+}
+
+export interface EarnVerifyRequest {
+  sessionId: string;
+  taskId: string;
+  proof?: string;
+}
+
+export interface EarnVerifyResponse {
+  ok: boolean;
+  taskId: string;
+  verified: boolean;
+  requiresVerification: boolean;
+  message: string;
   earn: EarnStatePayload;
   economy: {
     kick: number;

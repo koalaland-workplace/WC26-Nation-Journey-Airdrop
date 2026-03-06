@@ -71,6 +71,7 @@ export interface AppGameState {
     taskCap: number;
     claimedKick: number;
     claimedTasks: Record<string, number>;
+    verifiedTasks: Record<string, number>;
   };
   penalty: {
     day: string;
@@ -116,6 +117,7 @@ export interface SessionView {
     taskCap: number;
     claimedKick: number;
     claimedTaskIds: string[];
+    verifiedTaskIds: string[];
   };
 }
 
@@ -237,7 +239,8 @@ export function createDefaultState(sessionId: string, kick = 0): AppGameState {
     earn: {
       taskCap: TASK_KICK_CAP,
       claimedKick: 0,
-      claimedTasks: {}
+      claimedTasks: {},
+      verifiedTasks: {}
     },
     penalty: {
       day: today,
@@ -360,6 +363,12 @@ export function mergePersistedState(raw: unknown, sessionId: string, userKick: n
         Object.entries(asRecord(earn.claimedTasks)).map(([taskId, claimedAt]) => [
           taskId,
           asFiniteInt(claimedAt, Date.now())
+        ])
+      ),
+      verifiedTasks: Object.fromEntries(
+        Object.entries(asRecord(earn.verifiedTasks)).map(([taskId, verifiedAt]) => [
+          taskId,
+          asFiniteInt(verifiedAt, Date.now())
         ])
       )
     },
@@ -597,7 +606,8 @@ export function sessionView(state: AppGameState): SessionView {
     earn: {
       taskCap: state.earn.taskCap,
       claimedKick: state.earn.claimedKick,
-      claimedTaskIds: Object.keys(state.earn.claimedTasks || {})
+      claimedTaskIds: Object.keys(state.earn.claimedTasks || {}),
+      verifiedTaskIds: Object.keys(state.earn.verifiedTasks || {})
     }
   };
 }

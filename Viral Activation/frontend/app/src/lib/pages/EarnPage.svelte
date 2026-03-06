@@ -23,6 +23,7 @@
   }
 
   $: claimedTaskSet = new Set($earnStore.claimedTaskIds);
+  $: verifiedTaskSet = new Set($earnStore.verifiedTaskIds);
   $: taskDoneCount = $earnStore.claimedTaskIds.length;
   $: taskTotal = $earnStore.tasks.length;
   $: progressPct = taskTotal > 0 ? Math.round((taskDoneCount / taskTotal) * 100) : 0;
@@ -35,30 +36,32 @@
     }))
     .filter((group) => group.tasks.length > 0);
 
-  async function claim(task: EarnTask): Promise<void> {
-    const result = await earnStore.claimTask(sessionId, task);
-    flashMessage = result.message;
-
+  function showFlash(message: string): void {
+    flashMessage = message;
     if (flashTimer) {
       clearTimeout(flashTimer);
     }
-
     flashTimer = setTimeout(() => {
       flashMessage = "";
     }, 1800);
   }
 
+  async function claim(task: EarnTask): Promise<void> {
+    const result = await earnStore.claimTask(sessionId, task);
+    showFlash(result.message);
+  }
+
+  async function verify(task: EarnTask): Promise<void> {
+    const hint = task.verificationHint || "Paste proof link for this mission.";
+    const proof = window.prompt(`Verify "${task.name}"\n${hint}`, "");
+    if (proof === null) return;
+    const result = await earnStore.verifyTask(sessionId, task, proof);
+    showFlash(result.message);
+  }
+
   async function activateRefBoost(): Promise<void> {
     await earnStore.boostReferral(sessionId, 3);
-    flashMessage = "🚀 Referral boost synced.";
-
-    if (flashTimer) {
-      clearTimeout(flashTimer);
-    }
-
-    flashTimer = setTimeout(() => {
-      flashMessage = "";
-    }, 1800);
+    showFlash("🚀 Referral boost synced.");
   }
 
   onDestroy(() => {
@@ -168,16 +171,32 @@
       </div>
 
       {#each category.tasks as task}
-        <div class={`task ${claimedTaskSet.has(task.id) ? "done" : ""}`}>
+        <div class={`task ${claimedTaskSet.has(task.id) ? "done" : ""} ${task.isActive === false ? "inactive" : ""}`}>
           <div class="task-ic">{task.icon}</div>
           <div class="task-info">
             <div class="task-nm">{task.name}</div>
-            <div class="task-ds">{task.description}</div>
+            <div class="task-ds">
+              {task.description}
+              {#if task.requiresVerification}
+                · verification required
+              {/if}
+            </div>
           </div>
           <div class="task-r">
             <div class="task-pts">+{task.points.toLocaleString("en-US")}</div>
+            {#if task.requiresVerification && verifiedTaskSet.has(task.id) && !claimedTaskSet.has(task.id)}
+              <div class="task-vf">VERIFIED</div>
+            {/if}
             {#if claimedTaskSet.has(task.id)}
               <div class="task-di">✅</div>
+            {:else if task.isActive === false}
+              <button class="tbtn tbi" type="button" disabled>
+                INACTIVE
+              </button>
+            {:else if task.requiresVerification && !verifiedTaskSet.has(task.id)}
+              <button class={`tbtn ${toneButtonClass(task.tone)}`} type="button" on:click={() => verify(task)}>
+                VERIFY
+              </button>
             {:else}
               <button class={`tbtn ${toneButtonClass(task.tone)}`} type="button" on:click={() => claim(task)}>
                 {task.actionLabel}

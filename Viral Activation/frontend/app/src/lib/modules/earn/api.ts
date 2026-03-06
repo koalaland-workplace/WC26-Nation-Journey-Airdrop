@@ -3,11 +3,14 @@ import type {
   EarnCatalogResponse,
   EarnClaimRequest,
   EarnClaimResponse,
+  EarnVerifyRequest,
+  EarnVerifyResponse,
   EarnStateResponse
 } from "./types";
 
 const EARN_TASKS_STATE_ENDPOINT = "/api/earn/tasks/state";
 const EARN_TASKS_CLAIM_ENDPOINT = "/api/earn/tasks/claim";
+const EARN_TASKS_VERIFY_ENDPOINT = "/api/earn/tasks/verify";
 const EARN_TASKS_CATALOG_ENDPOINT = "/api/earn/tasks/catalog";
 
 export async function fetchEarnCatalog(): Promise<EarnCatalogResponse> {
@@ -21,4 +24,8 @@ export async function fetchEarnState(sessionId: string): Promise<EarnStateRespon
 
 export async function claimEarnTask(payload: EarnClaimRequest): Promise<EarnClaimResponse> {
   return httpPost<EarnClaimResponse, EarnClaimRequest>(EARN_TASKS_CLAIM_ENDPOINT, payload);
+}
+
+export async function verifyEarnTask(payload: EarnVerifyRequest): Promise<EarnVerifyResponse> {
+  return httpPost<EarnVerifyResponse, EarnVerifyRequest>(EARN_TASKS_VERIFY_ENDPOINT, payload);
 }

@@ -1,5 +1,5 @@
 import { get, writable } from "svelte/store";
-import { fetchEarnCatalog, fetchEarnState, claimEarnTask } from "../modules/earn/api";
+import { claimEarnTask, fetchEarnCatalog, fetchEarnState, verifyEarnTask } from "../modules/earn/api";
 import { EARN_TASK_CAP, EARN_TASK_CATEGORIES, EARN_TASKS } from "../modules/earn/data";
 import { activateReferralBoost, fetchReferralState } from "../modules/referral/api";
 import type { EarnChannelItem, EarnClaimResult, EarnTask, EarnTaskCategory } from "../modules/earn/types";
@@ -15,6 +15,7 @@ export interface EarnState {
   tasks: EarnTask[];
   channels: EarnChannelItem[];
   claimedTaskIds: string[];
+  verifiedTaskIds: string[];
   claimedKick: number;
   referral: ReferralState;
   isBoosting: boolean;
@@ -36,6 +37,7 @@ const initialState: EarnState = {
   tasks: EARN_TASKS,
   channels: [],
   claimedTaskIds: [],
+  verifiedTaskIds: [],
   claimedKick: 0,
   referral: DEFAULT_REFERRAL_STATE,
   isBoosting: false,
@@ -71,7 +73,10 @@ function normalizeTask(task: EarnTask): EarnTask {
     description: String(task.description || ""),
     points,
     actionLabel: String(task.actionLabel || "CLAIM"),
-    tone
+    tone,
+    isActive: task.isActive !== false,
+    requiresVerification: Boolean(task.requiresVerification),
+    verificationHint: typeof task.verificationHint === "string" ? task.verificationHint : null
   };
 }
 
@@ -108,6 +113,7 @@ function createEarnStore() {
                 : EARN_TASK_CATEGORIES,
             tasks: catalogPayload.tasks.length > 0 ? catalogPayload.tasks.map(normalizeTask) : EARN_TASKS,
             channels: catalogPayload.channels ?? [],
+            verifiedTaskIds: [],
             errorMessage: null
           }));
         } catch {
@@ -136,6 +142,9 @@ function createEarnStore() {
         channels: catalogPayload.channels ?? [],
         claimedKick: Math.max(0, Math.floor(Number(earnPayload.earn.claimedKick) || 0)),
         claimedTaskIds: earnPayload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
+        verifiedTaskIds: (earnPayload.earn.verifiedTaskIds ?? []).filter(
+          (taskId) => typeof taskId === "string"
+        ),
         referral: normalizeReferral(referralPayload.referral),
         errorMessage: null
       }));
@@ -163,6 +172,23 @@ function createEarnStore() {
         message: "Session chưa sẵn sàng."
       };
     }
+    if (task.isActive === false) {
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message: "Task is inactive."
+      };
+    }
+
+    const snapshot = get({ subscribe });
+    const isVerified = snapshot.verifiedTaskIds.includes(task.id);
+    if (task.requiresVerification && !isVerified) {
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message: "Verify task first."
+      };
+    }
 
     try {
       const payload = await claimEarnTask({
@@ -178,6 +204,9 @@ function createEarnStore() {
         taskCap: Math.max(0, Math.floor(Number(payload.earn.taskCap) || state.taskCap)),
         claimedKick: Math.max(0, Math.floor(Number(payload.earn.claimedKick) || state.claimedKick)),
         claimedTaskIds: payload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
+        verifiedTaskIds: (payload.earn.verifiedTaskIds ?? []).filter(
+          (taskId) => typeof taskId === "string"
+        ),
         errorMessage: null
       }));
 
@@ -191,6 +220,64 @@ function createEarnStore() {
         taskId: task.id,
         appliedKick: payload.appliedKick,
         message
+      };
+    } catch (error) {
+      const message = toErrorMessage(error);
+      update((state) => ({ ...state, errorMessage: message }));
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message
+      };
+    }
+  }
+
+  async function verifyTask(sessionId: string | null, task: EarnTask, proof: string): Promise<EarnClaimResult> {
+    if (!sessionId) {
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message: "Session chưa sẵn sàng."
+      };
+    }
+    if (task.isActive === false) {
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message: "Task is inactive."
+      };
+    }
+    if (!task.requiresVerification) {
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message: "Task does not require verification."
+      };
+    }
+
+    try {
+      const payload = await verifyEarnTask({
+        sessionId,
+        taskId: task.id,
+        proof
+      });
+
+      sessionStore.sync({ economy: payload.economy });
+      update((state) => ({
+        ...state,
+        taskCap: Math.max(0, Math.floor(Number(payload.earn.taskCap) || state.taskCap)),
+        claimedKick: Math.max(0, Math.floor(Number(payload.earn.claimedKick) || state.claimedKick)),
+        claimedTaskIds: payload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
+        verifiedTaskIds: (payload.earn.verifiedTaskIds ?? []).filter(
+          (taskId) => typeof taskId === "string"
+        ),
+        errorMessage: null
+      }));
+
+      return {
+        taskId: task.id,
+        appliedKick: 0,
+        message: payload.message || "Task verified."
       };
     } catch (error) {
       const message = toErrorMessage(error);
@@ -239,6 +326,7 @@ function createEarnStore() {
     subscribe,
     init,
     claimTask,
+    verifyTask,
     boostReferral,
     reset: () => set(initialState)
   };
