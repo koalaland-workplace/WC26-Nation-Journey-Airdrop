@@ -2644,6 +2644,20 @@ a {
   transition: all 0.18s;
 }
 
+.task.has-link {
+  cursor: pointer;
+}
+
+.task.has-link:hover {
+  border-color: rgba(31, 191, 106, 0.42);
+  box-shadow: 0 0 0 1px rgba(31, 191, 106, 0.2) inset;
+}
+
+.task.has-link:focus-visible {
+  outline: 2px solid rgba(31, 191, 106, 0.7);
+  outline-offset: 1px;
+}
+
 .task.done {
   background: rgba(31, 191, 106, 0.05);
   border-color: rgba(31, 191, 106, 0.22);
@@ -2723,24 +2737,6 @@ a {
 
 .task-di {
   font-size: 14px;
-}
-
-.task-open {
-  text-decoration: none;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  color: var(--bl);
-  border: 1px solid rgba(30, 136, 229, 0.28);
-  background: rgba(30, 136, 229, 0.08);
-  border-radius: 999px;
-  padding: 2px 6px;
-}
-
-.task-open.off {
-  color: var(--gr);
-  border-color: rgba(176, 184, 193, 0.25);
-  background: rgba(176, 184, 193, 0.08);
 }
 
 .task-vf {

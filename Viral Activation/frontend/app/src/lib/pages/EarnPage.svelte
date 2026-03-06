@@ -64,6 +64,22 @@
     showFlash("🚀 Referral boost synced.");
   }
 
+  function canOpenTaskChannel(task: EarnTask): boolean {
+    return Boolean(task.isActive !== false && task.channel?.isActive && task.channel.url);
+  }
+
+  function openTaskChannel(task: EarnTask): void {
+    if (!canOpenTaskChannel(task)) return;
+    window.open(task.channel!.url, "_blank", "noopener,noreferrer");
+  }
+
+  function onTaskKeyDown(event: KeyboardEvent, task: EarnTask): void {
+    if (!canOpenTaskChannel(task)) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openTaskChannel(task);
+  }
+
   onDestroy(() => {
     if (flashTimer) {
       clearTimeout(flashTimer);
@@ -145,36 +161,6 @@
     </div>
   </div>
 
-  {#if $earnStore.channels.length > 0}
-    <div class="card acc-b">
-      <div class="info-head">📡 Official Channels</div>
-      <div class="info-list">
-        {#each $earnStore.channels as channel}
-          {#if channel.isActive === false}
-            <div class="earn-channel-item inactive" aria-disabled="true">
-              <div class="earn-channel-left">
-                <span class="earn-channel-icon">{channel.icon}</span>
-                <span class="earn-channel-name">{channel.name}</span>
-              </div>
-              <div class="earn-channel-right">
-                <span class="earn-channel-platform">{channel.platform}</span>
-                <span class="earn-channel-status">INACTIVE</span>
-              </div>
-            </div>
-          {:else}
-            <a class="earn-channel-item" href={channel.url} target="_blank" rel="noreferrer">
-              <div class="earn-channel-left">
-                <span class="earn-channel-icon">{channel.icon}</span>
-                <span class="earn-channel-name">{channel.name}</span>
-              </div>
-              <span class="earn-channel-platform">{channel.platform}</span>
-            </a>
-          {/if}
-        {/each}
-      </div>
-    </div>
-  {/if}
-
   {#each groupedTasks as category}
     <div class="tcat">
       <div class="tcat-hdr">
@@ -184,7 +170,13 @@
       </div>
 
       {#each category.tasks as task}
-        <div class={`task ${claimedTaskSet.has(task.id) ? "done" : ""} ${task.isActive === false ? "inactive" : ""}`}>
+        <div
+          class={`task ${claimedTaskSet.has(task.id) ? "done" : ""} ${task.isActive === false ? "inactive" : ""} ${canOpenTaskChannel(task) ? "has-link" : ""}`}
+          role={canOpenTaskChannel(task) ? "button" : undefined}
+          tabindex={canOpenTaskChannel(task) ? 0 : undefined}
+          on:click={() => openTaskChannel(task)}
+          on:keydown={(event) => onTaskKeyDown(event, task)}
+        >
           <div class="task-ic">{task.icon}</div>
           <div class="task-info">
             <div class="task-nm">{task.name}</div>
@@ -204,13 +196,6 @@
           </div>
           <div class="task-r">
             <div class="task-pts">+{task.points.toLocaleString("en-US")}</div>
-            {#if task.channel}
-              {#if task.channel.isActive}
-                <a class="task-open" href={task.channel.url} target="_blank" rel="noreferrer">OPEN</a>
-              {:else}
-                <span class="task-open off">CHANNEL OFF</span>
-              {/if}
-            {/if}
             {#if task.requiresVerification && verifiedTaskSet.has(task.id) && !claimedTaskSet.has(task.id)}
               <div class="task-vf">VERIFIED</div>
             {/if}
@@ -221,11 +206,11 @@
                 INACTIVE
               </button>
             {:else if task.requiresVerification && !verifiedTaskSet.has(task.id)}
-              <button class={`tbtn ${toneButtonClass(task.tone)}`} type="button" on:click={() => verify(task)}>
+              <button class={`tbtn ${toneButtonClass(task.tone)}`} type="button" on:click|stopPropagation={() => verify(task)}>
                 VERIFY
               </button>
             {:else}
-              <button class={`tbtn ${toneButtonClass(task.tone)}`} type="button" on:click={() => claim(task)}>
+              <button class={`tbtn ${toneButtonClass(task.tone)}`} type="button" on:click|stopPropagation={() => claim(task)}>
                 {task.actionLabel}
               </button>
             {/if}
