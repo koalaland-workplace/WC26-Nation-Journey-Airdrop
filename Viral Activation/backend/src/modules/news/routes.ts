@@ -55,9 +55,15 @@ type SyncState = {
   nextRunAt: string | null;
   lastResult: {
     provider: string;
-    requestUrl: string;
-    fetched: number;
-    stored: number;
+    newsRequestUrl: string;
+    fixturesRequestUrl: string;
+    newsFetched: number;
+    newsStored: number;
+    fixturesFetched: number;
+    fixturesStored: number;
+    fixturesCreated: number;
+    fixturesUpdated: number;
+    warnings: string[];
     completedAt: string;
     reason: "startup" | "schedule" | "manual";
   } | null;
@@ -74,6 +80,21 @@ type NormalizedNewsItem = {
   language: string | null;
   competition: string | null;
   publishedAt: Date;
+  rawPayload: Record<string, unknown>;
+};
+
+type NormalizedFixtureItem = {
+  providerFixtureId: string;
+  groupCode: string;
+  homeNation: string;
+  awayNation: string;
+  stadium: string;
+  city: string | null;
+  kickoffAt: Date;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  highlight: string | null;
   rawPayload: Record<string, unknown>;
 };
 
@@ -119,6 +140,45 @@ function firstDate(record: Record<string, unknown>, paths: string[]): Date | nul
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
   return null;
+}
+
+function firstNumber(record: Record<string, unknown>, paths: string[]): number | null {
+  for (const path of paths) {
+    const value = firstString(record, [path]);
+    if (!value) continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function clampText(value: string | null | undefined, maxLen: number, fallback = ""): string {
+  const text = (value ?? "").trim();
+  if (!text) return fallback;
+  return text.length > maxLen ? text.slice(0, maxLen) : text;
+}
+
+function parseGroupCode(rawValue: string | null): string {
+  const text = (rawValue ?? "").trim();
+  if (!text) return "A";
+  const groupMatch = text.match(/group[\s-]*([a-z0-9]+)/i);
+  if (groupMatch?.[1]) return clampText(groupMatch[1].toUpperCase(), 10, "A");
+  return clampText(text.toUpperCase(), 10, "A");
+}
+
+function normalizeFixtureStatus(raw: Record<string, unknown>): string {
+  const short = (firstString(raw, ["status.short", "fixture.status.short"]) ?? "").toUpperCase();
+  const long = (firstString(raw, ["status.long", "fixture.status.long", "status"]) ?? "").toLowerCase();
+  const finishedShort = new Set(["FT", "AET", "PEN"]);
+  const liveShort = new Set(["1H", "2H", "HT", "ET", "BT", "P", "LIVE", "INT"]);
+
+  if (finishedShort.has(short) || long.includes("finished") || long.includes("full time")) {
+    return "finished";
+  }
+  if (liveShort.has(short) || long.includes("live") || long.includes("half")) {
+    return "live";
+  }
+  return "scheduled";
 }
 
 function extractArray(payload: unknown): Record<string, unknown>[] {
@@ -189,6 +249,47 @@ function normalizeNewsRecord(raw: Record<string, unknown>, config: FootballNewsC
   };
 }
 
+function normalizeFixtureRecord(raw: Record<string, unknown>, config: FootballNewsConfig): NormalizedFixtureItem | null {
+  const homeNation = firstString(raw, ["teams.home.name", "homeTeam.name", "home.name", "home_team", "home"]);
+  const awayNation = firstString(raw, ["teams.away.name", "awayTeam.name", "away.name", "away_team", "away"]);
+  const kickoffAt =
+    firstDate(raw, ["fixture.date", "kickoff", "kickoffAt", "startTime", "date", "datetime"]) ?? null;
+
+  if (!homeNation || !awayNation || !kickoffAt) return null;
+
+  const rawGroup =
+    firstString(raw, ["league.round", "round", "stage", "group", "groupCode", "competition.name"]) ??
+    config.defaults.competitions[0] ??
+    "A";
+
+  const providerFixtureId =
+    firstString(raw, ["fixture.id", "id", "fixture_id", "match_id", "event_key"]) ??
+    createHash("sha1")
+      .update(`${config.provider}:${homeNation}:${awayNation}:${kickoffAt.toISOString()}`)
+      .digest("hex");
+
+  const stadium = firstString(raw, ["fixture.venue.name", "venue.name", "stadium", "ground"]) ?? "TBD";
+  const city = firstString(raw, ["fixture.venue.city", "venue.city", "city"]);
+  const homeScore = firstNumber(raw, ["goals.home", "score.fulltime.home", "scores.home", "homeScore"]);
+  const awayScore = firstNumber(raw, ["goals.away", "score.fulltime.away", "scores.away", "awayScore"]);
+  const highlight = firstString(raw, ["fixture.status.long", "status.long", "league.round", "round"]);
+
+  return {
+    providerFixtureId: clampText(providerFixtureId, 120, providerFixtureId),
+    groupCode: parseGroupCode(rawGroup),
+    homeNation: clampText(homeNation, 60, "Unknown"),
+    awayNation: clampText(awayNation, 60, "Unknown"),
+    stadium: clampText(stadium, 120, "TBD"),
+    city: city ? clampText(city, 80) : null,
+    kickoffAt,
+    status: clampText(normalizeFixtureStatus(raw), 30, "scheduled"),
+    homeScore: homeScore === null ? null : Math.max(0, Math.trunc(homeScore)),
+    awayScore: awayScore === null ? null : Math.max(0, Math.trunc(awayScore)),
+    highlight: highlight ? clampText(highlight, 200) : null,
+    rawPayload: raw
+  };
+}
+
 async function loadFootballNewsConfig(app: FastifyInstance): Promise<FootballNewsConfig> {
   const row = await app.prisma.featureConfig.findUnique({ where: { key: "api" } });
   const value = isRecord(row?.value) ? row.value : {};
@@ -210,6 +311,26 @@ function buildNewsUrl(config: FootballNewsConfig): URL {
   url.searchParams.set("language", config.defaults.language);
   url.searchParams.set("lang", config.defaults.language);
   url.searchParams.set("timezone", config.defaults.timezone);
+  return url;
+}
+
+function buildFixturesUrl(config: FootballNewsConfig): URL {
+  const url = new URL(normalizePath(config.endpoints.fixtures), config.baseUrl);
+
+  const hasCompetition = url.searchParams.has("competition") || url.searchParams.has("competitions");
+  if (!hasCompetition && config.defaults.competitions.length > 0) {
+    url.searchParams.set("competitions", config.defaults.competitions.join(","));
+    if (config.defaults.competitions.length === 1) {
+      url.searchParams.set("competition", config.defaults.competitions[0]);
+    }
+  }
+  if (!url.searchParams.has("timezone")) {
+    url.searchParams.set("timezone", config.defaults.timezone);
+  }
+  if (!url.searchParams.has("language") && !url.searchParams.has("lang")) {
+    url.searchParams.set("language", config.defaults.language);
+    url.searchParams.set("lang", config.defaults.language);
+  }
   return url;
 }
 
@@ -263,6 +384,56 @@ async function fetchProviderNews(config: FootballNewsConfig): Promise<{
   };
 }
 
+async function fetchProviderFixtures(config: FootballNewsConfig): Promise<{
+  requestUrl: string;
+  items: NormalizedFixtureItem[];
+  fetched: number;
+}> {
+  const url = buildFixturesUrl(config);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.polling.timeoutMs);
+
+  const headers: Record<string, string> = {
+    Accept: "application/json"
+  };
+  if (config.apiKey.trim()) {
+    headers[config.keyHeader] = config.apiKey.trim();
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "GET",
+      headers,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    const text = (await response.text()).slice(0, 400);
+    throw new Error(`Fixture provider request failed (${response.status}): ${text || "no message"}`);
+  }
+
+  const payload = (await response.json()) as unknown;
+  const records = extractArray(payload);
+  const mapped = records
+    .map((item) => normalizeFixtureRecord(item, config))
+    .filter((item): item is NormalizedFixtureItem => item !== null);
+
+  const deduped = new Map<string, NormalizedFixtureItem>();
+  for (const item of mapped) {
+    deduped.set(item.providerFixtureId, item);
+  }
+
+  return {
+    requestUrl: url.toString(),
+    items: [...deduped.values()],
+    fetched: records.length
+  };
+}
+
 async function upsertNewsItems(app: FastifyInstance, config: FootballNewsConfig, items: NormalizedNewsItem[]) {
   let stored = 0;
   for (const item of items) {
@@ -304,6 +475,69 @@ async function upsertNewsItems(app: FastifyInstance, config: FootballNewsConfig,
     stored += 1;
   }
   return stored;
+}
+
+async function upsertMatchFixtures(app: FastifyInstance, items: NormalizedFixtureItem[]) {
+  let created = 0;
+  let updated = 0;
+
+  for (const item of items) {
+    const kickoff = item.kickoffAt;
+    const fuzzyStart = new Date(kickoff.getTime() - 36 * 60 * 60 * 1000);
+    const fuzzyEnd = new Date(kickoff.getTime() + 36 * 60 * 60 * 1000);
+
+    const existing =
+      (await app.prisma.matchFixture.findFirst({
+        where: {
+          homeNation: item.homeNation,
+          awayNation: item.awayNation,
+          kickoffAt: kickoff
+        }
+      })) ??
+      (await app.prisma.matchFixture.findFirst({
+        where: {
+          homeNation: item.homeNation,
+          awayNation: item.awayNation,
+          kickoffAt: {
+            gte: fuzzyStart,
+            lte: fuzzyEnd
+          }
+        },
+        orderBy: [{ updatedAt: "desc" }]
+      }));
+
+    const data = {
+      groupCode: item.groupCode,
+      homeNation: item.homeNation,
+      awayNation: item.awayNation,
+      stadium: item.stadium,
+      city: item.city,
+      kickoffAt: item.kickoffAt,
+      status: item.status,
+      homeScore: item.homeScore,
+      awayScore: item.awayScore,
+      highlight: item.highlight
+    };
+
+    if (existing) {
+      await app.prisma.matchFixture.update({
+        where: { id: existing.id },
+        data
+      });
+      updated += 1;
+    } else {
+      await app.prisma.matchFixture.create({
+        data
+      });
+      created += 1;
+    }
+  }
+
+  return {
+    stored: created + updated,
+    created,
+    updated
+  };
 }
 
 function addMinutesIso(minutes: number): string {
@@ -363,18 +597,51 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
         };
       }
 
-      const fetched = await fetchProviderNews(config);
-      const stored = await upsertNewsItems(app, config, fetched.items);
+      const warnings: string[] = [];
+
+      let newsRequestUrl = "";
+      let newsFetched = 0;
+      let newsStored = 0;
+      let fixturesRequestUrl = "";
+      let fixturesFetched = 0;
+      let fixturesStored = 0;
+      let fixturesCreated = 0;
+      let fixturesUpdated = 0;
+
+      const newsFetch = await fetchProviderNews(config);
+      newsRequestUrl = newsFetch.requestUrl;
+      newsFetched = newsFetch.fetched;
+      newsStored = await upsertNewsItems(app, config, newsFetch.items);
+
+      try {
+        const fixtureFetch = await fetchProviderFixtures(config);
+        fixturesRequestUrl = fixtureFetch.requestUrl;
+        fixturesFetched = fixtureFetch.fetched;
+        const fixtureWrite = await upsertMatchFixtures(app, fixtureFetch.items);
+        fixturesStored = fixtureWrite.stored;
+        fixturesCreated = fixtureWrite.created;
+        fixturesUpdated = fixtureWrite.updated;
+      } catch (fixtureError) {
+        const msg = fixtureError instanceof Error ? fixtureError.message : "Fixture sync failed";
+        warnings.push(msg);
+      }
+
       const completedAt = new Date().toISOString();
 
       state.lastSuccessAt = completedAt;
-      state.lastError = null;
+      state.lastError = warnings.length > 0 ? warnings.join(" | ") : null;
       state.nextRunAt = addMinutesIso(config.polling.intervalMinutes);
       state.lastResult = {
         provider: config.provider,
-        requestUrl: fetched.requestUrl,
-        fetched: fetched.fetched,
-        stored,
+        newsRequestUrl,
+        fixturesRequestUrl,
+        newsFetched,
+        newsStored,
+        fixturesFetched,
+        fixturesStored,
+        fixturesCreated,
+        fixturesUpdated,
+        warnings,
         completedAt,
         reason
       };
@@ -389,9 +656,15 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
           targetId: "football_news_sync",
           after: {
             provider: config.provider,
-            requestUrl: fetched.requestUrl,
-            fetched: fetched.fetched,
-            stored
+            newsRequestUrl,
+            fixturesRequestUrl,
+            newsFetched,
+            newsStored,
+            fixturesFetched,
+            fixturesStored,
+            fixturesCreated,
+            fixturesUpdated,
+            warnings
           },
           ipAddress: options.ipAddress
         });
@@ -401,9 +674,15 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
         ok: true,
         skipped: false,
         provider: config.provider,
-        requestUrl: fetched.requestUrl,
-        fetched: fetched.fetched,
-        stored,
+        newsRequestUrl,
+        fixturesRequestUrl,
+        newsFetched,
+        newsStored,
+        fixturesFetched,
+        fixturesStored,
+        fixturesCreated,
+        fixturesUpdated,
+        warnings,
         nextRunAt: state.nextRunAt
       };
     } catch (error) {
