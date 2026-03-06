@@ -8,6 +8,17 @@ const updateSchema = z.object({
   value: z.record(z.any())
 });
 
+function parseMaybeJson(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return value;
+  }
+}
+
 export const configRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/api/v1/config/:key",
@@ -36,7 +47,18 @@ export const configRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const key = configKeySchema.parse((request.params as { key: string }).key);
-      const body = updateSchema.parse(request.body);
+      const rawBody = parseMaybeJson(request.body);
+      const withParsedValue =
+        typeof rawBody === "object" &&
+        rawBody !== null &&
+        "value" in rawBody &&
+        typeof (rawBody as { value?: unknown }).value === "string"
+          ? {
+              ...(rawBody as Record<string, unknown>),
+              value: parseMaybeJson((rawBody as { value?: unknown }).value)
+            }
+          : rawBody;
+      const body = updateSchema.parse(withParsedValue);
       const before = await app.prisma.featureConfig.findUnique({ where: { key } });
       const after = await app.prisma.featureConfig.upsert({
         where: { key },
