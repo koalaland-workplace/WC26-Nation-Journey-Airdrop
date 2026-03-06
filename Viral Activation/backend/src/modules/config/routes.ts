@@ -4,19 +4,25 @@ import { writeAudit } from "../common/audit.js";
 
 const configKeySchema = z.enum(["spin", "penalty", "missions", "settings", "api"]);
 
-const updateSchema = z.object({
+const wrappedUpdateSchema = z.object({
   value: z.record(z.any())
 });
 
-function parseMaybeJson(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  const trimmed = value.trim();
-  if (!trimmed) return value;
-  try {
-    return JSON.parse(trimmed) as unknown;
-  } catch {
-    return value;
+const directUpdateSchema = z.record(z.any());
+
+function parseMaybeJsonDeep(value: unknown, maxDepth = 3): unknown {
+  let next = value;
+  for (let i = 0; i < maxDepth; i += 1) {
+    if (typeof next !== "string") return next;
+    const trimmed = next.trim();
+    if (!trimmed) return next;
+    try {
+      next = JSON.parse(trimmed) as unknown;
+    } catch {
+      return next;
+    }
   }
+  return next;
 }
 
 export const configRoutes: FastifyPluginAsync = async (app) => {
@@ -47,7 +53,7 @@ export const configRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const key = configKeySchema.parse((request.params as { key: string }).key);
-      const rawBody = parseMaybeJson(request.body);
+      const rawBody = parseMaybeJsonDeep(request.body);
       const withParsedValue =
         typeof rawBody === "object" &&
         rawBody !== null &&
@@ -55,20 +61,23 @@ export const configRoutes: FastifyPluginAsync = async (app) => {
         typeof (rawBody as { value?: unknown }).value === "string"
           ? {
               ...(rawBody as Record<string, unknown>),
-              value: parseMaybeJson((rawBody as { value?: unknown }).value)
+              value: parseMaybeJsonDeep((rawBody as { value?: unknown }).value)
             }
           : rawBody;
-      const body = updateSchema.parse(withParsedValue);
+      const body =
+        typeof withParsedValue === "object" && withParsedValue !== null && "value" in withParsedValue
+          ? wrappedUpdateSchema.parse(withParsedValue).value
+          : directUpdateSchema.parse(withParsedValue);
       const before = await app.prisma.featureConfig.findUnique({ where: { key } });
       const after = await app.prisma.featureConfig.upsert({
         where: { key },
         update: {
-          value: body.value,
+          value: body,
           updatedBy: request.auth.sub
         },
         create: {
           key,
-          value: body.value,
+          value: body,
           updatedBy: request.auth.sub
         }
       });
