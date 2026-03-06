@@ -109,7 +109,7 @@
     announce: "ANNOUNCEMENTS",
     rules: "GAME RULES",
     rewards: "REWARD TRANSACTIONS",
-    mysterybox: "MYSTERY BOX",
+    mysterybox: "RANKING TIERS",
     wc26token: "WC26 TOKEN",
     nationpass: "NATION PASS",
     social: "SOCIAL MEDIA",
@@ -133,7 +133,7 @@
     announce: "WC26 NFT FANTASY · ANNOUNCEMENTS",
     rules: "WC26 NFT FANTASY · GAME RULEBOOK",
     rewards: "WC26 NFT FANTASY · REWARD LEDGER",
-    mysterybox: "WC26 NFT FANTASY · TICKET SYSTEM",
+    mysterybox: "WC26 NFT FANTASY · RANKING TIER TRACKING",
     wc26token: "WC26 NFT FANTASY · TOKEN ECONOMY",
     nationpass: "WC26 NFT FANTASY · NATION PASS",
     social: "WC26 NFT FANTASY · SOCIAL TASKS",
@@ -168,7 +168,7 @@
       label: "💰 Economy",
       items: [
         { id: "rewards", icon: "💎", label: "Rewards Dist." },
-        { id: "mysterybox", icon: "🎁", label: "Mystery Box" },
+        { id: "mysterybox", icon: "🎁", label: "Ranking Tiers" },
         { id: "wc26token", icon: "🪙", label: "WC26 Token" },
         { id: "nationpass", icon: "🏴", label: "Nation Pass" }
       ]
@@ -2119,7 +2119,7 @@
       const normalized = normalizeMysteryBoxConfig(mysteryConfig);
       mysteryConfig = normalized;
       await withAccess((token) => updateMysteryBoxAllocations(token, normalized));
-      showToast("Mystery Box allocation saved");
+      showToast("Ranking Tiers allocation saved");
       await loadMysteryBox();
     } catch (e) {
       error = (e as Error).message;
@@ -3530,7 +3530,7 @@
         <div class="pg active" id="pg-mysterybox">
           <div class="section">
             <div class="sec-hdr">
-              <div class="sec-title"><div class="sec-dot y"></div>Airdrop Box Allocation</div>
+              <div class="sec-title"><div class="sec-dot y"></div>Ranking Tiers Allocation</div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span class="tag tag-b">TOTAL TIERS {mysteryConfig.allocations.length}</span>
                 <button class="btn btn-ghost btn-sm" on:click={loadMysteryBox}>REFRESH</button>
