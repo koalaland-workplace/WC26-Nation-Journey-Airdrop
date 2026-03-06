@@ -4,8 +4,7 @@
   import { HOME_HERO_SNAPSHOT, HOME_TOP_NATIONS } from "../modules/home/data";
   import { daysUntilKickoff, formatFans } from "../modules/home/utils";
   import { fetchReferralState } from "../modules/referral/api";
-  import { resolveRankLine } from "../modules/session/utils";
-  import { TIER_POLICY } from "../modules/tier/policy";
+  import { resolveTierPolicyByKick, TIER_POLICY } from "../modules/tier/policy";
   import { hotSignalsStore } from "../stores/hot-signals.store";
   import { sessionStore } from "../stores/session.store";
   import { spinStore } from "../stores/spin.store";
@@ -36,8 +35,20 @@
   $: homeHotUpdated = updatedLabel($hotSignalsStore.lastUpdatedAt);
   $: spinLeft = $spinStore.spin.left;
   $: sessionId = $sessionStore.sessionId;
-  $: totalMickEarned = $sessionStore.kick;
-  $: currentRankLine = resolveRankLine(totalMickEarned);
+  $: totalKickEarned = Math.max(0, Math.floor(Number($sessionStore.kick) || 0));
+  $: currentTier = resolveTierPolicyByKick(totalKickEarned) ?? TIER_POLICY[0];
+  $: nextTier = TIER_POLICY.find((tier) => tier.minKick > totalKickEarned) ?? null;
+  $: currentTierLabel = currentTier?.label ?? "Rookie";
+  $: nextTierLabel = nextTier ? nextTier.label : "Max Tier Reached";
+  $: nextTierKickRequired = nextTier ? nextTier.minKick : (currentTier?.minKick ?? totalKickEarned);
+  $: kickProgressLabel = `${totalKickEarned.toLocaleString("en-US")} / ${nextTierKickRequired.toLocaleString("en-US")} KICK`;
+  $: tierProgressPct = (() => {
+    if (!nextTier || !currentTier) return 100;
+    const span = Math.max(1, nextTier.minKick - currentTier.minKick);
+    const progressed = totalKickEarned - currentTier.minKick;
+    return Math.max(0, Math.min(100, (progressed / span) * 100));
+  })();
+  $: totalReferrals = directReferralF1 + indirectReferralF2;
   $: homeSpinBadge = spinLeft > 0 ? "FREE SPIN READY" : "SPINS USED";
   $: homeSpinSub = spinLeft > 0
     ? `${spinLeft} spin${spinLeft > 1 ? "s" : ""} left today · Win 50-200 KICK`
@@ -122,41 +133,44 @@
     </div>
   </div>
 
-  <div class="card acc-b home-tier-card">
-    <div class="home-tier-title">Users Tracking</div>
-    <div class="home-tier-row">
-      <div class="home-tier-row-head">Direct Referral (F1)</div>
-      <div class="home-tier-row-desc">{directReferralF1.toLocaleString("en-US")}</div>
+  <div class="card acc-b home-journey-card">
+    <div class="home-journey-head">
+      <div class="home-journey-title">🧭 Your Journey Stats</div>
+      <div class="home-journey-tier-pill">{currentTierLabel}</div>
     </div>
-    <div class="home-tier-row">
-      <div class="home-tier-row-head">Indirect Referral (F2)</div>
-      <div class="home-tier-row-desc">{indirectReferralF2.toLocaleString("en-US")}</div>
-    </div>
-    <div class="home-tier-row">
-      <div class="home-tier-row-head">Current Rank</div>
-      <div class="home-tier-row-desc">{currentRankLine}</div>
-    </div>
-    <div class="home-tier-row">
-      <div class="home-tier-row-head">Total MICK Earned</div>
-      <div class="home-tier-row-desc">{totalMickEarned.toLocaleString("en-US")}</div>
-    </div>
-  </div>
-
-  <div class="card acc-y home-tier-card">
-    <div class="home-tier-title">2.4 Tiers & Benefits</div>
-    <div class="home-tier-sub">Your total KICK at snapshot determines your Tier and Benefits:</div>
-    {#each TIER_POLICY as tier}
-      <div class="home-tier-row">
-        <div class="home-tier-row-head">{tier.label}</div>
-        <div class="home-tier-row-desc">Requirements: {tier.kickLabel}</div>
-        <div class="home-tier-row-desc">Benefits: {tier.rewardsLabel}</div>
-        {#if tier.bonusLabel.trim()}
-          <div class="home-tier-row-desc">Upgrade Bonus: {tier.bonusLabel}</div>
-        {/if}
-        <div class="home-tier-row-desc">{tier.rightsLabel}</div>
-        <div class="home-tier-row-desc">{tier.gameplayLabel}</div>
+    <div class="home-journey-grid">
+      <div class="home-journey-item">
+        <div class="home-journey-label">Current Tier</div>
+        <div class="home-journey-value">{currentTierLabel}</div>
       </div>
-    {/each}
+      <div class="home-journey-item">
+        <div class="home-journey-label">Next Tier</div>
+        <div class="home-journey-value">{nextTierLabel}</div>
+      </div>
+      <div class="home-journey-item home-journey-item-wide">
+        <div class="home-journey-label">KICK Progress</div>
+        <div class="home-journey-value home-journey-mono">{kickProgressLabel}</div>
+        <div class="home-journey-progress-track">
+          <span class="home-journey-progress-fill" style={`width:${tierProgressPct.toFixed(2)}%`}></span>
+        </div>
+      </div>
+      <div class="home-journey-item">
+        <div class="home-journey-label">Direct Referrals (F1)</div>
+        <div class="home-journey-value home-journey-mono">{directReferralF1.toLocaleString("en-US")}</div>
+      </div>
+      <div class="home-journey-item">
+        <div class="home-journey-label">Indirect Referrals (F2)</div>
+        <div class="home-journey-value home-journey-mono">{indirectReferralF2.toLocaleString("en-US")}</div>
+      </div>
+      <div class="home-journey-item home-journey-item-wide">
+        <div class="home-journey-label">Total Referrals (F1 + F2)</div>
+        <div class="home-journey-value home-journey-mono">{totalReferrals.toLocaleString("en-US")}</div>
+      </div>
+      <div class="home-journey-item home-journey-item-wide">
+        <div class="home-journey-label">Total KICK Earned</div>
+        <div class="home-journey-value home-journey-kick">{totalKickEarned.toLocaleString("en-US")} KICK</div>
+      </div>
+    </div>
   </div>
 
   <button class="card acc-b home-match" type="button" on:click={() => onOpenInfoTab("match")}>
