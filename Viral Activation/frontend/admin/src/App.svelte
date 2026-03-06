@@ -553,19 +553,19 @@
   }
 
   async function bootstrap() {
-    await Promise.all([
-      loadDashboard(),
-      loadUsersAndLedger(),
-      loadConfigs(),
-      loadAnnouncements(),
-      loadPique(),
-      loadBoard(),
-      loadOperationalData(),
-      loadAuditLogs(),
-      loadReferrals(),
-      loadMatches(),
-      loadMissions()
-    ]);
+    const tasks: Array<Promise<unknown>> = [loadDashboard()];
+
+    if (can("users.manage")) tasks.push(loadUsersAndLedger());
+    if (can("config.spin") || can("config.penalty")) tasks.push(loadConfigs());
+    if (can("announcements.manage")) tasks.push(loadAnnouncements());
+    if (can("pique.logs.read")) tasks.push(loadPique());
+    if (can("board.manage")) tasks.push(loadBoard());
+    if (can("reports.read")) tasks.push(loadAuditLogs());
+    if (can("dashboard.read")) {
+      tasks.push(loadOperationalData(), loadReferrals(), loadMatches(), loadMissions());
+    }
+
+    await Promise.all(tasks);
     liveFeed = [
       {
         icon: "🎡",
