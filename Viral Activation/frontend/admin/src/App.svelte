@@ -543,23 +543,19 @@
   }
 
   function addFootballNewsProfile() {
-    try {
-      const normalized = normalizeFootballNewsApiForm(footballNewsApiForm);
-      const profileId = createFootballProfileId();
-      const profileName = footballNewsProfileName.trim() || defaultFootballProfileName(normalized.provider);
-      footballNewsProfiles = [
-        ...footballNewsProfiles,
-        {
-          id: profileId,
-          name: profileName,
-          value: cloneFootballNewsApiForm(normalized)
-        }
-      ];
-      setActiveFootballNewsProfile(profileId);
-      showToast("API profile added. Click SAVE CONFIG to persist.");
-    } catch (e) {
-      error = (e as Error).message;
-    }
+    const profileId = createFootballProfileId();
+    const provider = footballNewsApiForm.provider.trim() || "custom";
+    const profileName = footballNewsProfileName.trim() || defaultFootballProfileName(provider);
+    footballNewsProfiles = [
+      ...footballNewsProfiles,
+      {
+        id: profileId,
+        name: profileName,
+        value: cloneFootballNewsApiForm(footballNewsApiForm)
+      }
+    ];
+    setActiveFootballNewsProfile(profileId);
+    showToast("API profile added. Click SAVE CONFIG to persist.");
   }
 
   function deleteFootballNewsProfile() {
@@ -2961,11 +2957,48 @@
                   <input id="football-profile-name" class="inp" bind:value={footballNewsProfileName} placeholder="API profile name" />
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
-                  <button class="btn btn-ghost btn-sm" on:click={addFootballNewsProfile}>ADD API</button>
+                  <button class="btn btn-ghost btn-sm" on:click={addFootballNewsProfile}>ADD NEW API</button>
                   <button class="btn btn-ghost btn-sm" style="border-color:var(--red);color:var(--red)" on:click={deleteFootballNewsProfile}>
                     DELETE API
                   </button>
                 </div>
+              </div>
+
+              <div style="border:1px solid var(--border);border-radius:10px;overflow:auto">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Provider</th>
+                      <th>Base URL</th>
+                      <th>Enabled</th>
+                      <th>State</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#if footballNewsProfiles.length === 0}
+                      <tr><td colspan="7" style="color:var(--text3)">No API profile yet.</td></tr>
+                    {:else}
+                      {#each footballNewsProfiles as profile, idx}
+                        <tr>
+                          <td>{idx + 1}</td>
+                          <td>{profile.name}</td>
+                          <td>{profile.value.provider}</td>
+                          <td>{profile.value.baseUrl}</td>
+                          <td>{profile.value.enabled ? "ON" : "OFF"}</td>
+                          <td>{profile.id === footballNewsActiveProfileId ? "ACTIVE" : "-"}</td>
+                          <td>
+                            <button class="btn btn-ghost btn-sm" on:click={() => setActiveFootballNewsProfile(profile.id)}>
+                              EDIT
+                            </button>
+                          </td>
+                        </tr>
+                      {/each}
+                    {/if}
+                  </tbody>
+                </table>
               </div>
 
               <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:center">
