@@ -137,6 +137,81 @@ export async function listUsers(
   });
 }
 
+export interface KickLeaderboardItem {
+  rank: number;
+  userId: string;
+  telegramId: string | null;
+  username: string | null;
+  nationCode: string;
+  kick: number;
+  status: UserStatus;
+}
+
+export interface ReferrerLeaderboardItem {
+  rank: number;
+  inviterUserId: string;
+  telegramId: string | null;
+  username: string;
+  nationCode: string;
+  inviterKick: number;
+  inviterStatus: UserStatus;
+  totalReferrals: number;
+  f1Referrals: number;
+  active7dCount: number;
+  totalKickAwarded: number;
+  flaggedCount: number;
+}
+
+export interface NationLeaderboardItem {
+  rank: number;
+  nationCode: string;
+  totalKick: number;
+  totalUsers: number;
+  eligibleUsers: number;
+  warPoints: number;
+  topUsername: string;
+  topKick: number;
+}
+
+export async function listKickLeaderboard(
+  accessToken: string,
+  query: { limit?: number; offset?: number } = {}
+): Promise<{ items: KickLeaderboardItem[]; total: number }> {
+  const params = new URLSearchParams();
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.offset) params.set("offset", String(query.offset));
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  return request(`/api/v1/leaderboard/kick${suffix}`, {
+    headers: authedHeaders(accessToken)
+  });
+}
+
+export async function listReferrersLeaderboard(
+  accessToken: string,
+  query: { limit?: number; offset?: number } = {}
+): Promise<{ items: ReferrerLeaderboardItem[]; total: number }> {
+  const params = new URLSearchParams();
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.offset) params.set("offset", String(query.offset));
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  return request(`/api/v1/leaderboard/referrers${suffix}`, {
+    headers: authedHeaders(accessToken)
+  });
+}
+
+export async function listNationsLeaderboard(
+  accessToken: string,
+  query: { limit?: number; offset?: number } = {}
+): Promise<{ items: NationLeaderboardItem[]; total: number }> {
+  const params = new URLSearchParams();
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.offset) params.set("offset", String(query.offset));
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  return request(`/api/v1/leaderboard/nations${suffix}`, {
+    headers: authedHeaders(accessToken)
+  });
+}
+
 export async function updateUserStatus(
   accessToken: string,
   payload: { id: string; status: UserStatus }

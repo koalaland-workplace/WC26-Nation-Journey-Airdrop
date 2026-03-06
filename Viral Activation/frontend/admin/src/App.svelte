@@ -16,11 +16,14 @@
     listAnnouncements,
     listBoardMembers,
     listKickLedger,
+    listKickLeaderboard,
     listMatches,
     listMissions,
+    listNationsLeaderboard,
     listPiqueConversations,
     listReferralChains,
     listReferralFlagged,
+    listReferrersLeaderboard,
     listSocialChannels,
     listUsers,
     loginWithTelegram,
@@ -48,11 +51,14 @@
     type KickLedgerItem,
     type MatchFixture,
     type MissionItem,
+    type NationLeaderboardItem,
     type PiqueConversation,
+    type ReferrerLeaderboardItem,
     type ReferralChain,
     type ReferralConfig,
     type ReferralFlaggedItem,
     type ReferralsMetrics,
+    type KickLeaderboardItem,
     type SocialChannelItem,
     type SystemHealthSnapshot,
     type SystemQueueSnapshot,
@@ -450,6 +456,9 @@
   };
 
   let leaderboardTab: "kick" | "ref" | "nation" = "kick";
+  let leaderboardKick: KickLeaderboardItem[] = [];
+  let leaderboardReferrers: ReferrerLeaderboardItem[] = [];
+  let leaderboardNations: NationLeaderboardItem[] = [];
   let referralsTab: "chains" | "abuse" | "config" = "chains";
   let socialTab: "channels" | "tasks" | "rewards" | "templates" = "channels";
   let penaltyTab: "solo" | "pvp" | "physics" | "skins" = "solo";
@@ -536,6 +545,21 @@
     { flag: "🇻🇳", name: "Vietnam", pts: "1.2M", rank: 5 }
   ];
 
+  const nationFlagByCode: Record<string, string> = {
+    AR: "🇦🇷",
+    BR: "🇧🇷",
+    DE: "🇩🇪",
+    ES: "🇪🇸",
+    FR: "🇫🇷",
+    GB: "🇬🇧",
+    IT: "🇮🇹",
+    JP: "🇯🇵",
+    KR: "🇰🇷",
+    PT: "🇵🇹",
+    US: "🇺🇸",
+    VN: "🇻🇳"
+  };
+
   const workflowStats = [
     { name: "Auto KICK on Register", desc: "Grant 100 KICK to new users", runs: 2847, ok: 2841, cat: "User Lifecycle" },
     { name: "Jackpot Announcement", desc: "Broadcast jackpot winners", runs: 14, ok: 14, cat: "Economy" },
@@ -549,6 +573,10 @@
     if (status === "vip") return "tag-y";
     if (status === "banned") return "tag-r";
     return "tag-g";
+  }
+
+  function nationFlag(code: string): string {
+    return nationFlagByCode[code.toUpperCase()] ?? "🏳️";
   }
 
   function showToast(message: string) {
@@ -991,7 +1019,7 @@
     if (can("board.manage")) tasks.push(loadBoard());
     if (can("reports.read")) tasks.push(loadAuditLogs());
     if (can("dashboard.read")) {
-      tasks.push(loadOperationalData(), loadReferrals(), loadMatches(), loadMissions(), loadSocialChannels());
+      tasks.push(loadOperationalData(), loadLeaderboard(), loadReferrals(), loadMatches(), loadMissions(), loadSocialChannels());
     }
 
     await Promise.all(tasks);
@@ -1012,6 +1040,7 @@
     if (next === "dashboard") await loadDashboard();
     if (next === "users" || next === "rewards") await loadUsersAndLedger();
     if (next === "dashboard" || next === "rewards" || next === "api") await loadOperationalData();
+    if (next === "leaderboard") await loadLeaderboard();
     if (next === "api") await loadApiConfig();
     if (next === "rewards") await loadAuditLogs();
     if (next === "spin" || next === "penalty") await loadConfigs();
@@ -1056,6 +1085,18 @@
     if (!selectedUserId && users[0]) selectedUserId = users[0].id;
     const ledgerRes = await withAccess((token) => listKickLedger(token, { limit: 80 }));
     ledger = ledgerRes.items;
+  }
+
+  async function loadLeaderboard() {
+    const [kickRes, refRes, nationRes] = await Promise.all([
+      withAccess((token) => listKickLeaderboard(token, { limit: 50 })),
+      withAccess((token) => listReferrersLeaderboard(token, { limit: 50 })),
+      withAccess((token) => listNationsLeaderboard(token, { limit: 50 }))
+    ]);
+
+    leaderboardKick = kickRes.items;
+    leaderboardReferrers = refRes.items;
+    leaderboardNations = nationRes.items;
   }
 
   async function loadConfigs() {
@@ -1571,6 +1612,9 @@
     queueSnapshot = null;
     users = [];
     ledger = [];
+    leaderboardKick = [];
+    leaderboardReferrers = [];
+    leaderboardNations = [];
     auditLogs = [];
     announcements = [];
     piqueLogs = [];
@@ -1618,7 +1662,6 @@
   $: currentTitle = TITLES[page];
   $: currentSub = SUBS[page];
   $: recentUsers = users.slice(0, 5);
-  $: topKickUsers = [...users].sort((a, b) => b.kick - a.kick).slice(0, 10);
   $: eligibleTokenUsers = users.filter((u) => u.kick >= 5000);
   $: spinRewards = (() => {
     try {
@@ -1986,36 +2029,72 @@
             <div class="section">
               <div class="sec-hdr"><div class="sec-title"><div class="sec-dot"></div>Top KICK Holders</div></div>
               <div class="sec-body" style="padding:0">
-                <table class="tbl"><thead><tr><th>#</th><th>User</th><th>Nation</th><th>KICK</th></tr></thead><tbody>
-                  {#each topKickUsers as u, i}
-                    <tr>
-                      <td>#{i + 1}</td>
-                      <td>@{u.username ?? "unknown"}</td>
-                      <td>{u.nationCode}</td>
-                      <td style="font-family:var(--mono);color:var(--yellow)">{u.kick.toLocaleString()}</td>
-                    </tr>
-                  {/each}
+                <table class="tbl"><thead><tr><th>#</th><th>User</th><th>TG ID</th><th>Nation</th><th>KICK</th><th>Status</th></tr></thead><tbody>
+                  {#if leaderboardKick.length === 0}
+                    <tr><td colspan="6" style="text-align:center;color:var(--text2)">No data yet</td></tr>
+                  {:else}
+                    {#each leaderboardKick as u}
+                      <tr>
+                        <td>#{u.rank}</td>
+                        <td>@{u.username ?? "unknown"}</td>
+                        <td>{u.telegramId ?? "-"}</td>
+                        <td>{nationFlag(u.nationCode)} {u.nationCode}</td>
+                        <td style="font-family:var(--mono);color:var(--yellow)">{u.kick.toLocaleString()}</td>
+                        <td><span class={`tag ${statusTag(u.status)}`}>{u.status.toUpperCase()}</span></td>
+                      </tr>
+                    {/each}
+                  {/if}
                 </tbody></table>
               </div>
             </div>
           {/if}
 
           {#if leaderboardTab === "ref"}
-            <div class="section"><div class="sec-hdr"><div class="sec-title"><div class="sec-dot b"></div>Top Referrers</div></div>
-              <div class="sec-body">
-                <div class="health-row"><div class="h-dot h-ok"></div><div class="h-label">@footballking</div><div class="h-val">312 refs</div></div>
-                <div class="health-row"><div class="h-dot h-ok"></div><div class="h-label">@amir_88</div><div class="h-val">227 refs</div></div>
-                <div class="health-row"><div class="h-dot h-ok"></div><div class="h-label">@samba_fc</div><div class="h-val">198 refs</div></div>
+            <div class="section">
+              <div class="sec-hdr"><div class="sec-title"><div class="sec-dot b"></div>Top Referrers</div></div>
+              <div class="sec-body" style="padding:0">
+                <table class="tbl"><thead><tr><th>#</th><th>User</th><th>Nation</th><th>Total</th><th>F1</th><th>Active 7d</th><th>KICK Awarded</th><th>Flagged</th></tr></thead><tbody>
+                  {#if leaderboardReferrers.length === 0}
+                    <tr><td colspan="8" style="text-align:center;color:var(--text2)">No data yet</td></tr>
+                  {:else}
+                    {#each leaderboardReferrers as row}
+                      <tr>
+                        <td>#{row.rank}</td>
+                        <td>@{row.username || "unknown"}</td>
+                        <td>{nationFlag(row.nationCode)} {row.nationCode}</td>
+                        <td>{row.totalReferrals}</td>
+                        <td>{row.f1Referrals}</td>
+                        <td>{row.active7dCount}</td>
+                        <td>{row.totalKickAwarded.toLocaleString()}</td>
+                        <td style={`color:${row.flaggedCount > 0 ? "var(--red)" : "var(--text2)"}`}>{row.flaggedCount}</td>
+                      </tr>
+                    {/each}
+                  {/if}
+                </tbody></table>
               </div>
             </div>
           {/if}
 
           {#if leaderboardTab === "nation"}
-            <div class="section"><div class="sec-hdr"><div class="sec-title"><div class="sec-dot y"></div>Nation War Rankings</div></div>
-              <div class="sec-body">
-                {#each topNations as n}
-                  <div class="health-row"><div class="h-dot h-ok"></div><div class="h-label">{n.flag} {n.name}</div><div class="h-val">{n.pts}</div></div>
-                {/each}
+            <div class="section">
+              <div class="sec-hdr"><div class="sec-title"><div class="sec-dot y"></div>Nation War Rankings</div></div>
+              <div class="sec-body" style="padding:0">
+                <table class="tbl"><thead><tr><th>#</th><th>Nation</th><th>War Points</th><th>Total KICK</th><th>Eligible</th><th>Top Player</th></tr></thead><tbody>
+                  {#if leaderboardNations.length === 0}
+                    <tr><td colspan="6" style="text-align:center;color:var(--text2)">No data yet</td></tr>
+                  {:else}
+                    {#each leaderboardNations as row}
+                      <tr>
+                        <td>#{row.rank}</td>
+                        <td>{nationFlag(row.nationCode)} {row.nationCode}</td>
+                        <td>{row.warPoints.toLocaleString()}</td>
+                        <td>{row.totalKick.toLocaleString()}</td>
+                        <td>{row.eligibleUsers.toLocaleString()} / {row.totalUsers.toLocaleString()}</td>
+                        <td>@{row.topUsername} ({row.topKick.toLocaleString()})</td>
+                      </tr>
+                    {/each}
+                  {/if}
+                </tbody></table>
               </div>
             </div>
           {/if}
