@@ -21,6 +21,7 @@ import { realtimeRoutes } from "./modules/realtime/routes.js";
 import { referralsRoutes } from "./modules/referrals/routes.js";
 import { matchesRoutes } from "./modules/matches/routes.js";
 import { missionsRoutes } from "./modules/missions/routes.js";
+import { socialRoutes } from "./modules/social/routes.js";
 import { newsRoutes } from "./modules/news/routes.js";
 
 export async function createApp() {
@@ -64,6 +65,7 @@ export async function createApp() {
   await app.register(referralsRoutes);
   await app.register(matchesRoutes);
   await app.register(missionsRoutes);
+  await app.register(socialRoutes);
   await app.register(newsRoutes);
 
   app.get("/api/v1/ws/feed", { websocket: true }, (connection) => {

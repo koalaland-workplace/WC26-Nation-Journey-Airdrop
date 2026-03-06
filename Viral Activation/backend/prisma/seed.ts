@@ -283,6 +283,44 @@ async function main() {
     }
   }
 
+  const socialChannelCount = await prisma.socialChannel.count();
+  if (socialChannelCount === 0) {
+    await prisma.socialChannel.createMany({
+      data: [
+        {
+          platform: "Telegram",
+          name: "WC26 Journey Official",
+          url: "https://t.me/wc26journey",
+          icon: "📱",
+          tasks: 3,
+          kick: 300,
+          sortOrder: 10,
+          isActive: true
+        },
+        {
+          platform: "Twitter/X",
+          name: "@WC26Journey",
+          url: "https://twitter.com/wc26journey",
+          icon: "🐦",
+          tasks: 4,
+          kick: 400,
+          sortOrder: 20,
+          isActive: true
+        },
+        {
+          platform: "YouTube",
+          name: "WC26 Journey",
+          url: "https://youtube.com/@wc26journey",
+          icon: "▶️",
+          tasks: 2,
+          kick: 250,
+          sortOrder: 30,
+          isActive: true
+        }
+      ]
+    });
+  }
+
   const newsCount = await prisma.newsItem.count();
   if (newsCount === 0) {
     await prisma.newsItem.createMany({

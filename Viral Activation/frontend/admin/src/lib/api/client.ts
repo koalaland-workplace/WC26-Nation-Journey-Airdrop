@@ -686,3 +686,72 @@ export async function toggleMission(
     body: JSON.stringify({ isActive: payload.isActive })
   });
 }
+
+export interface SocialChannelItem {
+  id: string;
+  platform: string;
+  name: string;
+  url: string;
+  icon: string | null;
+  tasks: number;
+  kick: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SocialChannelUpsertPayload {
+  id?: string;
+  platform: string;
+  name: string;
+  url: string;
+  icon?: string;
+  tasks: number;
+  kick: number;
+  sortOrder: number;
+  isActive?: boolean;
+}
+
+export async function listSocialChannels(
+  accessToken: string,
+  query: { active?: boolean; platform?: string; limit?: number; offset?: number } = {}
+): Promise<{ items: SocialChannelItem[]; total: number }> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+  });
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  return request(`/api/v1/social/channels${suffix}`, {
+    headers: authedHeaders(accessToken)
+  });
+}
+
+export async function upsertSocialChannel(
+  accessToken: string,
+  payload: SocialChannelUpsertPayload
+): Promise<SocialChannelItem> {
+  return request("/api/v1/social/channels/upsert", {
+    method: "POST",
+    headers: authedHeaders(accessToken),
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function toggleSocialChannel(
+  accessToken: string,
+  payload: { id: string; isActive: boolean }
+): Promise<SocialChannelItem> {
+  return request(`/api/v1/social/channels/${payload.id}/toggle`, {
+    method: "PATCH",
+    headers: authedHeaders(accessToken),
+    body: JSON.stringify({ isActive: payload.isActive })
+  });
+}
+
+export async function deleteSocialChannel(accessToken: string, id: string): Promise<{ ok: boolean }> {
+  return request(`/api/v1/social/channels/${id}`, {
+    method: "DELETE",
+    headers: authedHeaders(accessToken)
+  });
+}

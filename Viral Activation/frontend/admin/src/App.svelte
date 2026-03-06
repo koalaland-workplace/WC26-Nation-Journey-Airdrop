@@ -21,18 +21,22 @@
     listPiqueConversations,
     listReferralChains,
     listReferralFlagged,
+    listSocialChannels,
     listUsers,
     loginWithTelegram,
     logoutSession,
     openSseStream,
     refreshSession,
+    deleteSocialChannel,
     updateConfig,
     updateMatchStatus,
     updateReferralsConfig,
+    toggleSocialChannel,
     updateUserStatus,
     upsertBoardMember,
     upsertMatch,
     upsertMission,
+    upsertSocialChannel,
     verifyTotp,
     toggleMission,
     type AdminRole,
@@ -49,6 +53,7 @@
     type ReferralConfig,
     type ReferralFlaggedItem,
     type ReferralsMetrics,
+    type SocialChannelItem,
     type SystemHealthSnapshot,
     type SystemQueueSnapshot,
     type UserStatus
@@ -307,6 +312,73 @@
     };
   }
 
+  type SpinRewardConfig = {
+    id: string;
+    chance: string;
+    value: string;
+  };
+
+  type PenaltyConfigForm = {
+    soloFreePerDay: string;
+    soloExtraCost: string;
+    soloWin: string;
+    pvpWin: string;
+    pvpLose: string;
+    pvpBurn: string;
+  };
+
+  type SocialChannelForm = {
+    id: string;
+    platform: string;
+    name: string;
+    url: string;
+    icon: string;
+    tasks: string;
+    kick: string;
+    sortOrder: string;
+    isActive: boolean;
+  };
+
+  function defaultSpinConfig() {
+    return {
+      dailyCap: 5,
+      rewards: [
+        { id: "k50", chance: 30, value: 50 },
+        { id: "k100", chance: 25, value: 100 },
+        { id: "k200", chance: 10, value: 200 },
+        { id: "q2x", chance: 10, value: 2 },
+        { id: "ref3x", chance: 5, value: 3 },
+        { id: "box", chance: 5, value: 1 },
+        { id: "none", chance: 15, value: 0 }
+      ]
+    };
+  }
+
+  function defaultPenaltyConfig() {
+    return {
+      soloFreePerDay: 3,
+      soloExtraCost: 500,
+      soloWin: 2000,
+      pvpWin: 2000,
+      pvpLose: -2500,
+      pvpBurn: 500
+    };
+  }
+
+  function defaultSocialChannelForm(): SocialChannelForm {
+    return {
+      id: "",
+      platform: "Telegram",
+      name: "",
+      url: "",
+      icon: "📱",
+      tasks: "0",
+      kick: "0",
+      sortOrder: "0",
+      isActive: true
+    };
+  }
+
   let page: PageId = "dashboard";
   let sidebarCollapsed = false;
   let loading = false;
@@ -334,6 +406,16 @@
 
   let spinConfigText = "{}";
   let penaltyConfigText = "{}";
+  let spinDailyCap = "5";
+  let spinRewardsForm: SpinRewardConfig[] = [];
+  let penaltyForm: PenaltyConfigForm = {
+    soloFreePerDay: "3",
+    soloExtraCost: "500",
+    soloWin: "2000",
+    pvpWin: "2000",
+    pvpLose: "-2500",
+    pvpBurn: "500"
+  };
   let footballNewsApiForm: FootballNewsApiForm = defaultFootballNewsApiForm();
 
   let announcements: Announcement[] = [];
@@ -397,6 +479,9 @@
   };
   let matchesData: MatchFixture[] = [];
   let missionsData: MissionItem[] = [];
+  let socialChannels: SocialChannelItem[] = [];
+  let socialChannelsTotal = 0;
+  let socialChannelForm: SocialChannelForm = defaultSocialChannelForm();
   let matchForm: {
     id: string;
     groupCode: string;
@@ -454,12 +539,6 @@
     { name: "Auto KICK on Register", desc: "Grant 100 KICK to new users", runs: 2847, ok: 2841, cat: "User Lifecycle" },
     { name: "Jackpot Announcement", desc: "Broadcast jackpot winners", runs: 14, ok: 14, cat: "Economy" },
     { name: "Spin Streak Reward", desc: "3-day streak -> 500 KICK", runs: 431, ok: 428, cat: "Economy" }
-  ];
-
-  const socialChannels = [
-    { platform: "Telegram", name: "WC26 Journey Official", url: "t.me/wc26journey", tasks: 3, kick: 300, icon: "📱" },
-    { platform: "Twitter/X", name: "@WC26Journey", url: "twitter.com/wc26journey", tasks: 4, kick: 400, icon: "🐦" },
-    { platform: "YouTube", name: "WC26 Journey", url: "youtube.com/@wc26journey", tasks: 2, kick: 250, icon: "▶️" }
   ];
 
   const systemPrompt =
@@ -572,6 +651,146 @@
 
   function resetFootballNewsApiForm() {
     footballNewsApiForm = defaultFootballNewsApiForm();
+  }
+
+  function toSafeInt(value: string, fallback = 0): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.trunc(parsed);
+  }
+
+  function syncSpinFormFromText() {
+    try {
+      const parsed = JSON.parse(spinConfigText) as {
+        dailyCap?: number;
+        rewards?: Array<{ id?: string; chance?: number; value?: number }>;
+      };
+      const rewards = Array.isArray(parsed.rewards) ? parsed.rewards : [];
+      spinDailyCap = String(typeof parsed.dailyCap === "number" ? parsed.dailyCap : 5);
+      spinRewardsForm =
+        rewards.length > 0
+          ? rewards.map((row) => ({
+              id: String(row.id ?? ""),
+              chance: String(typeof row.chance === "number" ? row.chance : 0),
+              value: String(typeof row.value === "number" ? row.value : 0)
+            }))
+          : defaultSpinConfig().rewards.map((row) => ({
+              id: row.id,
+              chance: String(row.chance),
+              value: String(row.value)
+            }));
+    } catch {
+      const template = defaultSpinConfig();
+      spinDailyCap = String(template.dailyCap);
+      spinRewardsForm = template.rewards.map((row) => ({
+        id: row.id,
+        chance: String(row.chance),
+        value: String(row.value)
+      }));
+    }
+  }
+
+  function applySpinFormToText() {
+    const rewards = spinRewardsForm
+      .map((row) => ({
+        id: row.id.trim(),
+        chance: toSafeInt(row.chance),
+        value: toSafeInt(row.value)
+      }))
+      .filter((row) => row.id.length > 0);
+
+    const next = {
+      dailyCap: toSafeInt(spinDailyCap, 5),
+      rewards
+    };
+    spinConfigText = JSON.stringify(next, null, 2);
+  }
+
+  function loadSpinTemplate() {
+    spinConfigText = JSON.stringify(defaultSpinConfig(), null, 2);
+    syncSpinFormFromText();
+  }
+
+  function addSpinRewardRow() {
+    spinRewardsForm = [
+      ...spinRewardsForm,
+      {
+        id: "",
+        chance: "0",
+        value: "0"
+      }
+    ];
+  }
+
+  function removeSpinRewardRow(index: number) {
+    spinRewardsForm = spinRewardsForm.filter((_, i) => i !== index);
+    applySpinFormToText();
+  }
+
+  function syncPenaltyFormFromText() {
+    try {
+      const parsed = JSON.parse(penaltyConfigText) as {
+        soloFreePerDay?: number;
+        soloExtraCost?: number;
+        soloWin?: number;
+        pvpWin?: number;
+        pvpLose?: number;
+        pvpBurn?: number;
+      };
+      penaltyForm = {
+        soloFreePerDay: String(typeof parsed.soloFreePerDay === "number" ? parsed.soloFreePerDay : 3),
+        soloExtraCost: String(typeof parsed.soloExtraCost === "number" ? parsed.soloExtraCost : 500),
+        soloWin: String(typeof parsed.soloWin === "number" ? parsed.soloWin : 2000),
+        pvpWin: String(typeof parsed.pvpWin === "number" ? parsed.pvpWin : 2000),
+        pvpLose: String(typeof parsed.pvpLose === "number" ? parsed.pvpLose : -2500),
+        pvpBurn: String(typeof parsed.pvpBurn === "number" ? parsed.pvpBurn : 500)
+      };
+    } catch {
+      const template = defaultPenaltyConfig();
+      penaltyForm = {
+        soloFreePerDay: String(template.soloFreePerDay),
+        soloExtraCost: String(template.soloExtraCost),
+        soloWin: String(template.soloWin),
+        pvpWin: String(template.pvpWin),
+        pvpLose: String(template.pvpLose),
+        pvpBurn: String(template.pvpBurn)
+      };
+    }
+  }
+
+  function applyPenaltyFormToText() {
+    const next = {
+      soloFreePerDay: toSafeInt(penaltyForm.soloFreePerDay, 3),
+      soloExtraCost: toSafeInt(penaltyForm.soloExtraCost, 500),
+      soloWin: toSafeInt(penaltyForm.soloWin, 2000),
+      pvpWin: toSafeInt(penaltyForm.pvpWin, 2000),
+      pvpLose: toSafeInt(penaltyForm.pvpLose, -2500),
+      pvpBurn: toSafeInt(penaltyForm.pvpBurn, 500)
+    };
+    penaltyConfigText = JSON.stringify(next, null, 2);
+  }
+
+  function loadPenaltyTemplate() {
+    penaltyConfigText = JSON.stringify(defaultPenaltyConfig(), null, 2);
+    syncPenaltyFormFromText();
+  }
+
+  function resetSocialChannelForm() {
+    socialChannelForm = defaultSocialChannelForm();
+  }
+
+  function setSocialChannelFormFromItem(channel: SocialChannelItem) {
+    socialChannelForm = {
+      id: channel.id,
+      platform: channel.platform,
+      name: channel.name,
+      url: channel.url,
+      icon: channel.icon ?? "",
+      tasks: String(channel.tasks),
+      kick: String(channel.kick),
+      sortOrder: String(channel.sortOrder),
+      isActive: channel.isActive
+    };
   }
 
   function setMissionFormFromItem(mission: MissionItem) {
@@ -771,7 +990,7 @@
     if (can("board.manage")) tasks.push(loadBoard());
     if (can("reports.read")) tasks.push(loadAuditLogs());
     if (can("dashboard.read")) {
-      tasks.push(loadOperationalData(), loadReferrals(), loadMatches(), loadMissions());
+      tasks.push(loadOperationalData(), loadReferrals(), loadMatches(), loadMissions(), loadSocialChannels());
     }
 
     await Promise.all(tasks);
@@ -801,6 +1020,7 @@
     if (next === "referrals") await loadReferrals();
     if (next === "matches") await loadMatches();
     if (next === "missions") await loadMissions();
+    if (next === "social") await loadSocialChannels();
   }
 
   async function loadDashboard() {
@@ -842,8 +1062,14 @@
       withAccess((token) => getConfig(token, "spin")),
       withAccess((token) => getConfig(token, "penalty"))
     ]);
-    spinConfigText = JSON.stringify(spin.value, null, 2);
-    penaltyConfigText = JSON.stringify(penalty.value, null, 2);
+    const spinValue = asRecord(spin.value);
+    const penaltyValue = asRecord(penalty.value);
+    const normalizedSpin = Object.keys(spinValue).length > 0 ? spinValue : defaultSpinConfig();
+    const normalizedPenalty = Object.keys(penaltyValue).length > 0 ? penaltyValue : defaultPenaltyConfig();
+    spinConfigText = JSON.stringify(normalizedSpin, null, 2);
+    penaltyConfigText = JSON.stringify(normalizedPenalty, null, 2);
+    syncSpinFormFromText();
+    syncPenaltyFormFromText();
   }
 
   async function loadApiConfig() {
@@ -894,6 +1120,82 @@
   async function loadMissions() {
     const res = await withAccess((token) => listMissions(token, { limit: 100 }));
     missionsData = res.items;
+  }
+
+  async function loadSocialChannels() {
+    const res = await withAccess((token) => listSocialChannels(token, { limit: 100 }));
+    socialChannels = res.items;
+    socialChannelsTotal = res.total;
+  }
+
+  async function submitSocialChannel() {
+    if (!socialChannelForm.platform.trim() || !socialChannelForm.name.trim() || !socialChannelForm.url.trim()) {
+      error = "Platform, name, and URL are required";
+      return;
+    }
+
+    loading = true;
+    error = "";
+    try {
+      await withAccess((token) =>
+        upsertSocialChannel(token, {
+          id: socialChannelForm.id || undefined,
+          platform: socialChannelForm.platform.trim(),
+          name: socialChannelForm.name.trim(),
+          url: socialChannelForm.url.trim(),
+          icon: socialChannelForm.icon.trim() || undefined,
+          tasks: toSafeInt(socialChannelForm.tasks, 0),
+          kick: toSafeInt(socialChannelForm.kick, 0),
+          sortOrder: toSafeInt(socialChannelForm.sortOrder, 0),
+          isActive: socialChannelForm.isActive
+        })
+      );
+      showToast(socialChannelForm.id ? "Social channel updated" : "Social channel created");
+      resetSocialChannelForm();
+      await loadSocialChannels();
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function setSocialChannelActive(channel: SocialChannelItem, nextActive: boolean) {
+    loading = true;
+    error = "";
+    try {
+      await withAccess((token) =>
+        toggleSocialChannel(token, {
+          id: channel.id,
+          isActive: nextActive
+        })
+      );
+      await loadSocialChannels();
+      showToast(`Social channel ${nextActive ? "activated" : "disabled"}`);
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function removeSocialChannel(channel: SocialChannelItem) {
+    const ok = window.confirm(`Delete social channel "${channel.platform} · ${channel.name}"?`);
+    if (!ok) return;
+    loading = true;
+    error = "";
+    try {
+      await withAccess((token) => deleteSocialChannel(token, channel.id));
+      await loadSocialChannels();
+      if (socialChannelForm.id === channel.id) {
+        resetSocialChannelForm();
+      }
+      showToast("Social channel deleted");
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loading = false;
+    }
   }
 
   async function submitMatch() {
@@ -1276,6 +1578,9 @@
     referralFlagged = [];
     matchesData = [];
     missionsData = [];
+    socialChannels = [];
+    socialChannelsTotal = 0;
+    resetSocialChannelForm();
     resetFootballNewsApiForm();
     liveFeed = [];
   }
@@ -2038,15 +2343,89 @@
           </div>
 
           {#if socialTab === "channels"}
-            <div class="section"><div class="sec-hdr"><div class="sec-title"><div class="sec-dot"></div>Social Channels</div></div>
-              <div class="sec-body">
-                {#each socialChannels as ch}
-                  <div class="sc-row">
-                    <div class="sc-icon">{ch.icon}</div>
-                    <div class="sc-info"><div class="sc-name">{ch.platform} · {ch.name}</div><div class="sc-url">{ch.url}</div></div>
-                    <div class="sc-tasks">{ch.tasks} tasks · {ch.kick} KICK</div>
+            <div class="section"><div class="sec-hdr">
+                <div class="sec-title"><div class="sec-dot"></div>Social Channels ({socialChannelsTotal})</div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-ghost btn-sm" on:click={loadSocialChannels}>RELOAD</button>
+                  {#if can("missions.manage")}
+                    <button class="btn btn-ghost btn-sm" on:click={resetSocialChannelForm}>RESET FORM</button>
+                  {/if}
+                </div>
+              </div>
+              <div class="sec-body" style="display:grid;gap:10px">
+                <div style="padding:0;overflow:auto">
+                  <table class="tbl">
+                    <thead>
+                      <tr>
+                        <th>Platform</th>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Tasks</th>
+                        <th>KICK</th>
+                        <th>Sort</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#if socialChannels.length === 0}
+                        <tr>
+                          <td colspan="8" style="text-align:center;color:var(--text3)">No social channels found. Create one below.</td>
+                        </tr>
+                      {:else}
+                        {#each socialChannels as ch}
+                          <tr>
+                            <td>{ch.icon ?? "🔗"} {ch.platform}</td>
+                            <td>{ch.name}</td>
+                            <td><span class="sc-url">{ch.url}</span></td>
+                            <td>{ch.tasks}</td>
+                            <td>{ch.kick}</td>
+                            <td>{ch.sortOrder}</td>
+                            <td><span class={`tag ${ch.isActive ? "tag-g" : "tag-r"}`}>{ch.isActive ? "ACTIVE" : "OFF"}</span></td>
+                            <td style="display:flex;gap:6px;flex-wrap:wrap">
+                              {#if can("missions.manage")}
+                                <button class="btn btn-ghost btn-sm" on:click={() => setSocialChannelFormFromItem(ch)}>EDIT</button>
+                                <button class="btn btn-ghost btn-sm" on:click={() => setSocialChannelActive(ch, !ch.isActive)}>
+                                  {ch.isActive ? "DISABLE" : "ACTIVATE"}
+                                </button>
+                                <button class="btn btn-ghost btn-sm" on:click={() => removeSocialChannel(ch)}>DELETE</button>
+                              {:else}
+                                -
+                              {/if}
+                            </td>
+                          </tr>
+                        {/each}
+                      {/if}
+                    </tbody>
+                  </table>
+                </div>
+
+                {#if can("missions.manage")}
+                  <div style="display:grid;gap:8px;border-top:1px solid var(--border);padding-top:10px">
+                    <div class="sec-title" style="font-size:14px"><div class="sec-dot y"></div>{socialChannelForm.id ? "Update Channel" : "Create Channel"}</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+                      <input class="inp" placeholder="Platform (Telegram/Twitter/X...)" bind:value={socialChannelForm.platform} />
+                      <input class="inp" placeholder="Channel Name" bind:value={socialChannelForm.name} />
+                      <input class="inp" placeholder="URL" bind:value={socialChannelForm.url} />
+                      <input class="inp" placeholder="Icon (emoji)" bind:value={socialChannelForm.icon} />
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:center">
+                      <input class="inp" type="number" min="0" placeholder="Tasks" bind:value={socialChannelForm.tasks} />
+                      <input class="inp" type="number" min="0" placeholder="KICK reward" bind:value={socialChannelForm.kick} />
+                      <input class="inp" type="number" placeholder="Sort order" bind:value={socialChannelForm.sortOrder} />
+                      <label class="toggle">
+                        <input type="checkbox" bind:checked={socialChannelForm.isActive} />
+                        <span class="toggle-slider"></span>
+                      </label>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px">
+                      <button class="btn btn-ghost btn-sm" on:click={resetSocialChannelForm}>RESET</button>
+                      <button class="btn btn-g btn-sm" on:click={submitSocialChannel}>
+                        {socialChannelForm.id ? "UPDATE CHANNEL" : "CREATE CHANNEL"}
+                      </button>
+                    </div>
                   </div>
-                {/each}
+                {/if}
               </div>
             </div>
           {/if}
@@ -2060,16 +2439,42 @@
       {#if page === "spin"}
         <div class="pg active" id="pg-spin">
           <div class="section">
-            <div class="sec-hdr"><div class="sec-title"><div class="sec-dot"></div>Lucky Spin Config (Live)</div></div>
+            <div class="sec-hdr">
+              <div class="sec-title"><div class="sec-dot"></div>Lucky Spin Config (Live)</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" on:click={loadConfigs}>RELOAD</button>
+                <button class="btn btn-ghost btn-sm" on:click={loadSpinTemplate}>LOAD TEMPLATE</button>
+                <button class="btn btn-ghost btn-sm" on:click={syncSpinFormFromText}>JSON → FORM</button>
+                <button class="btn btn-ghost btn-sm" on:click={applySpinFormToText}>FORM → JSON</button>
+              </div>
+            </div>
             <div class="sec-body" style="display:grid;grid-template-columns:1.3fr .7fr;gap:12px">
-              <div>
-                <textarea class="inp" rows="16" bind:value={spinConfigText}></textarea>
-                <div style="margin-top:8px"><button class="btn btn-g" on:click={() => saveConfig("spin")}>SAVE SPIN CONFIG</button></div>
+              <div style="display:grid;gap:8px">
+                <div style="display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:center">
+                  <label for="spin-daily-cap" style="font-family:var(--mono);font-size:10px;color:var(--text3)">Daily Cap</label>
+                  <input id="spin-daily-cap" class="inp" type="number" min="1" bind:value={spinDailyCap} on:input={applySpinFormToText} />
+                  <button class="btn btn-ghost btn-sm" on:click={addSpinRewardRow}>+ REWARD</button>
+                </div>
+                <div style="display:grid;gap:6px;max-height:220px;overflow:auto;padding-right:2px">
+                  {#each spinRewardsForm as row, idx}
+                    <div style="display:grid;grid-template-columns:1.2fr .6fr .6fr auto;gap:8px;align-items:center">
+                      <input class="inp" placeholder="reward id" bind:value={row.id} on:input={applySpinFormToText} />
+                      <input class="inp" type="number" placeholder="% chance" bind:value={row.chance} on:input={applySpinFormToText} />
+                      <input class="inp" type="number" placeholder="value" bind:value={row.value} on:input={applySpinFormToText} />
+                      <button class="btn btn-ghost btn-sm" on:click={() => removeSpinRewardRow(idx)}>X</button>
+                    </div>
+                  {/each}
+                </div>
+                <textarea class="inp" rows="10" bind:value={spinConfigText}></textarea>
+                <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-ghost btn-sm" on:click={syncSpinFormFromText}>APPLY JSON</button>
+                  <button class="btn btn-g" on:click={() => saveConfig("spin")}>SAVE SPIN CONFIG</button>
+                </div>
               </div>
               <div>
                 <div class="sec-title" style="font-size:14px;margin-bottom:10px"><div class="sec-dot b"></div>Probability Preview</div>
                 {#if spinRewards.length === 0}
-                  <div class="muted-line">No rewards array in config.</div>
+                  <div class="muted-line">No rewards array in config. Load template or fill rewards list.</div>
                 {:else}
                   {#each spinRewards as s}
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
@@ -2095,10 +2500,29 @@
           </div>
 
           <div class="section">
-            <div class="sec-hdr"><div class="sec-title"><div class="sec-dot"></div>Penalty Config (Live)</div></div>
+            <div class="sec-hdr">
+              <div class="sec-title"><div class="sec-dot"></div>Penalty Config (Live)</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" on:click={loadConfigs}>RELOAD</button>
+                <button class="btn btn-ghost btn-sm" on:click={loadPenaltyTemplate}>LOAD TEMPLATE</button>
+                <button class="btn btn-ghost btn-sm" on:click={syncPenaltyFormFromText}>JSON → FORM</button>
+                <button class="btn btn-ghost btn-sm" on:click={applyPenaltyFormToText}>FORM → JSON</button>
+              </div>
+            </div>
             <div class="sec-body">
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px">
+                <input class="inp" type="number" placeholder="soloFreePerDay" bind:value={penaltyForm.soloFreePerDay} on:input={applyPenaltyFormToText} />
+                <input class="inp" type="number" placeholder="soloExtraCost" bind:value={penaltyForm.soloExtraCost} on:input={applyPenaltyFormToText} />
+                <input class="inp" type="number" placeholder="soloWin" bind:value={penaltyForm.soloWin} on:input={applyPenaltyFormToText} />
+                <input class="inp" type="number" placeholder="pvpWin" bind:value={penaltyForm.pvpWin} on:input={applyPenaltyFormToText} />
+                <input class="inp" type="number" placeholder="pvpLose" bind:value={penaltyForm.pvpLose} on:input={applyPenaltyFormToText} />
+                <input class="inp" type="number" placeholder="pvpBurn" bind:value={penaltyForm.pvpBurn} on:input={applyPenaltyFormToText} />
+              </div>
               <textarea class="inp" rows="16" bind:value={penaltyConfigText}></textarea>
-              <div style="margin-top:8px"><button class="btn btn-g" on:click={() => saveConfig("penalty")}>SAVE PENALTY CONFIG</button></div>
+              <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" on:click={syncPenaltyFormFromText}>APPLY JSON</button>
+                <button class="btn btn-g" on:click={() => saveConfig("penalty")}>SAVE PENALTY CONFIG</button>
+              </div>
             </div>
           </div>
         </div>
