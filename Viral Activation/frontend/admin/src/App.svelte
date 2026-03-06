@@ -1016,14 +1016,14 @@
     </div>
   </nav>
 
-  <div id="main">
-    <div id="topbar">
-      <button id="menuToggle" on:click={toggleSidebar}>
+  <div id="wc26-main">
+    <div id="wc26-topbar">
+      <button id="wc26-menu-toggle" on:click={toggleSidebar}>
         <span></span><span></span><span></span>
       </button>
       <div class="pg-title-wrap">
-        <div id="pgTitle">{currentTitle}</div>
-        <div id="pgSub">{currentSub}</div>
+        <div id="wc26-pg-title">{currentTitle}</div>
+        <div id="wc26-pg-sub">{currentSub}</div>
       </div>
       <div class="topbar-actions">
         <div class="tb-chip live"><span class="tb-dot"></span>{dashboard?.onlineUsers ?? 0} ONLINE</div>
@@ -1033,7 +1033,7 @@
       </div>
     </div>
 
-    <div id="content">
+    <div id="wc26-content">
       {#if page === "dashboard"}
         <div class="pg active" id="pg-dashboard">
           <div class="qa-grid">

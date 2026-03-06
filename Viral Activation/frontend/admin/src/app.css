@@ -371,14 +371,14 @@ body {
   color: var(--green);
 }
 
-#main {
+#wc26-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-#topbar {
+#wc26-topbar {
   height: var(--header);
   background: var(--bg1);
   border-bottom: 1px solid var(--border);
@@ -389,7 +389,7 @@ body {
   flex-shrink: 0;
 }
 
-#menuToggle {
+#wc26-menu-toggle {
   width: 32px;
   height: 32px;
   display: flex;
@@ -403,7 +403,7 @@ body {
   border: none;
 }
 
-#menuToggle span {
+#wc26-menu-toggle span {
   display: block;
   width: 18px;
   height: 1.5px;
@@ -414,7 +414,7 @@ body {
   flex: 1;
 }
 
-#pgTitle {
+#wc26-pg-title {
   font-family: var(--display);
   font-size: 22px;
   font-weight: 800;
@@ -422,7 +422,7 @@ body {
   line-height: 1;
 }
 
-#pgSub {
+#wc26-pg-sub {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--text3);
@@ -479,7 +479,7 @@ body {
   }
 }
 
-#content {
+#wc26-content {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
@@ -1357,16 +1357,16 @@ body {
     margin-right: 6px;
   }
 
-  #main {
+  #wc26-main {
     min-height: auto;
   }
 
-  #topbar {
+  #wc26-topbar {
     padding: 10px;
     height: auto;
   }
 
-  #content {
+  #wc26-content {
     padding: 12px;
   }
 
