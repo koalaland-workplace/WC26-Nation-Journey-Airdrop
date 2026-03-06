@@ -116,6 +116,11 @@ function normalizeChannel(channel: EarnChannelItem): EarnChannelItem {
   };
 }
 
+function sanitizeTaskIdList(taskIds: string[], tasks: EarnTask[]): string[] {
+  const allowed = new Set(tasks.map((task) => task.id));
+  return taskIds.filter((taskId) => typeof taskId === "string" && allowed.has(taskId));
+}
+
 function createEarnStore() {
   const { subscribe, set, update } = writable<EarnState>(initialState);
   let initPromise: Promise<void> | null = null;
@@ -129,13 +134,15 @@ function createEarnStore() {
       if (!sessionId) {
         try {
           const catalogPayload = await fetchEarnCatalog();
+          const tasks = catalogPayload.tasks.map(normalizeTask);
           update((state) => ({
             ...state,
             status: "ready",
             categories: catalogPayload.categories.map(normalizeCategory),
-            tasks: catalogPayload.tasks.map(normalizeTask),
+            tasks,
             channels: (catalogPayload.channels ?? []).map(normalizeChannel),
             verifiedTaskIds: [],
+            claimedTaskIds: sanitizeTaskIdList(state.claimedTaskIds, tasks),
             errorMessage: null
           }));
         } catch {
@@ -151,19 +158,20 @@ function createEarnStore() {
       ]);
 
       sessionStore.sync({ economy: earnPayload.economy });
+      const tasks = catalogPayload.tasks.map(normalizeTask);
+      const claimedTaskIds = sanitizeTaskIdList(earnPayload.earn.claimedTaskIds, tasks);
+      const verifiedTaskIds = sanitizeTaskIdList(earnPayload.earn.verifiedTaskIds ?? [], tasks);
 
       update((state) => ({
         ...state,
         status: "ready",
         taskCap: Math.max(0, Math.floor(Number(earnPayload.earn.taskCap) || EARN_TASK_CAP)),
         categories: catalogPayload.categories.map(normalizeCategory),
-        tasks: catalogPayload.tasks.map(normalizeTask),
+        tasks,
         channels: (catalogPayload.channels ?? []).map(normalizeChannel),
         claimedKick: Math.max(0, Math.floor(Number(earnPayload.earn.claimedKick) || 0)),
-        claimedTaskIds: earnPayload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
-        verifiedTaskIds: (earnPayload.earn.verifiedTaskIds ?? []).filter(
-          (taskId) => typeof taskId === "string"
-        ),
+        claimedTaskIds,
+        verifiedTaskIds,
         referral: normalizeReferral(referralPayload.referral),
         errorMessage: null
       }));
@@ -222,10 +230,8 @@ function createEarnStore() {
         ...state,
         taskCap: Math.max(0, Math.floor(Number(payload.earn.taskCap) || state.taskCap)),
         claimedKick: Math.max(0, Math.floor(Number(payload.earn.claimedKick) || state.claimedKick)),
-        claimedTaskIds: payload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
-        verifiedTaskIds: (payload.earn.verifiedTaskIds ?? []).filter(
-          (taskId) => typeof taskId === "string"
-        ),
+        claimedTaskIds: sanitizeTaskIdList(payload.earn.claimedTaskIds, state.tasks),
+        verifiedTaskIds: sanitizeTaskIdList(payload.earn.verifiedTaskIds ?? [], state.tasks),
         errorMessage: null
       }));
 
@@ -286,10 +292,8 @@ function createEarnStore() {
         ...state,
         taskCap: Math.max(0, Math.floor(Number(payload.earn.taskCap) || state.taskCap)),
         claimedKick: Math.max(0, Math.floor(Number(payload.earn.claimedKick) || state.claimedKick)),
-        claimedTaskIds: payload.earn.claimedTaskIds.filter((taskId) => typeof taskId === "string"),
-        verifiedTaskIds: (payload.earn.verifiedTaskIds ?? []).filter(
-          (taskId) => typeof taskId === "string"
-        ),
+        claimedTaskIds: sanitizeTaskIdList(payload.earn.claimedTaskIds, state.tasks),
+        verifiedTaskIds: sanitizeTaskIdList(payload.earn.verifiedTaskIds ?? [], state.tasks),
         errorMessage: null
       }));
 

@@ -412,7 +412,7 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get("/api/earn/tasks/catalog", async () => {
-    const [missions, channels] = await Promise.all([
+    const [missionRows, channels] = await Promise.all([
       app.prisma.mission.findMany({
         where: {
           channelId: {
@@ -431,12 +431,33 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
             }
           }
         },
-        orderBy: [{ isActive: "desc" }, { category: "asc" }, { rewardKick: "desc" }, { createdAt: "asc" }]
+        // Keep latest mission mapping for a channel so stale legacy rows do not leak into app catalog.
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }]
       }),
       app.prisma.socialChannel.findMany({
         orderBy: [{ isActive: "desc" }, { sortOrder: "asc" }, { createdAt: "asc" }]
       })
     ]);
+
+    const missionByChannelId = new Map<string, (typeof missionRows)[number]>();
+    for (const mission of missionRows) {
+      const channelId = mission.channelId ?? "";
+      if (!channelId) continue;
+      if (missionByChannelId.has(channelId)) continue;
+      missionByChannelId.set(channelId, mission);
+    }
+
+    const channelOrder = new Map<string, number>();
+    channels.forEach((channel, index) => {
+      channelOrder.set(channel.id, index);
+    });
+
+    const missions = [...missionByChannelId.values()].sort((left, right) => {
+      const leftOrder = channelOrder.get(left.channelId ?? "") ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = channelOrder.get(right.channelId ?? "") ?? Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return left.code.localeCompare(right.code);
+    });
 
     const tasks: EarnCatalogTask[] = missions.map((mission) => {
       const categoryId = normalizeCategoryId(mission.category, mission.code);
