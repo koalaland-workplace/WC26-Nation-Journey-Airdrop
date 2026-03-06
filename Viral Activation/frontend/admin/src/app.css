@@ -250,6 +250,12 @@ body {
   align-items: center;
   gap: 9px;
   padding: 7px 14px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   position: relative;
@@ -376,6 +382,9 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 #wc26-topbar {
@@ -387,6 +396,8 @@ body {
   gap: 14px;
   padding: 0 20px;
   flex-shrink: 0;
+  display: flex !important;
+  visibility: visible !important;
 }
 
 #wc26-menu-toggle {
@@ -484,6 +495,8 @@ body {
   overflow-y: auto;
   padding: 20px;
   background: var(--bg0);
+  display: block !important;
+  color: var(--text1) !important;
 }
 
 .pg {
@@ -491,7 +504,7 @@ body {
 }
 
 .pg.active {
-  display: block;
+  display: block !important;
 }
 
 .section {
