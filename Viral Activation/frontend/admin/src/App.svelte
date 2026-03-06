@@ -1012,6 +1012,7 @@
         <span>{$session.username ?? "Admin"}</span>
         <span>● {($session.role ?? "analyst").toUpperCase()}</span>
       </div>
+      <button type="button" class="sb-logout" on:click={doLogout}>LOGOUT</button>
     </div>
   </nav>
 
