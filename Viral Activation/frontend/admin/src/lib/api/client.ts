@@ -126,6 +126,8 @@ export interface AppUser {
   status: UserStatus;
   kick: number;
   tier: UserTier;
+  directReferrals: number;
+  indirectReferrals: number;
   mysteryTickets?: number;
   createdAt: string;
 }
@@ -143,11 +145,12 @@ export interface UserTierStatItem {
 
 export async function listUsers(
   accessToken: string,
-  query: { q?: string; status?: UserStatus; limit?: number; offset?: number } = {}
+  query: { q?: string; status?: UserStatus; tier?: UserTier; limit?: number; offset?: number } = {}
 ): Promise<{ items: AppUser[]; total: number; tierStats: UserTierStatItem[] }> {
   const params = new URLSearchParams();
   if (query.q) params.set("q", query.q);
   if (query.status) params.set("status", query.status);
+  if (query.tier) params.set("tier", query.tier);
   if (query.limit) params.set("limit", String(query.limit));
   if (query.offset) params.set("offset", String(query.offset));
   const suffix = params.size > 0 ? `?${params.toString()}` : "";

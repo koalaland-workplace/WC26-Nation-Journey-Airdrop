@@ -101,7 +101,7 @@
 
   const TITLES: Record<PageId, string> = {
     dashboard: "DASHBOARD",
-    users: "USER MANAGEMENT",
+    users: "USERS MANAGEMENT",
     leaderboard: "LEADERBOARD",
     referrals: "REFERRALS",
     matches: "MATCH MANAGER",
@@ -1039,6 +1039,7 @@
   let userTierStats: UserTierStatItem[] = [];
   let userQ = "";
   let userStatus: "all" | UserStatus = "all";
+  let userTierFilter: "all" | UserTier = "all";
 
   let ledger: KickLedgerItem[] = [];
   let selectedUserId = "";
@@ -1887,6 +1888,7 @@
       listUsers(token, {
         q: userQ || undefined,
         status: userStatus === "all" ? undefined : userStatus,
+        tier: userTierFilter === "all" ? undefined : userTierFilter,
         limit: 100
       })
     );
@@ -2634,6 +2636,7 @@
     users = [];
     userTierStats = [];
     ledger = [];
+    userTierFilter = "all";
     leaderboardKick = [];
     leaderboardReferrers = [];
     leaderboardNations = [];
@@ -2995,7 +2998,7 @@
         <div class="pg active" id="pg-users">
           <div class="section">
             <div class="sec-hdr">
-              <div class="sec-title"><div class="sec-dot"></div>User Management</div>
+              <div class="sec-title"><div class="sec-dot"></div>Users Management</div>
               <div style="display:flex;gap:8px">
                 <input class="inp" style="width:200px" placeholder="Search user / TG ID..." bind:value={userQ} />
                 <button class="btn btn-g btn-sm" on:click={loadUsersAndLedger}>FILTER</button>
@@ -3003,10 +3006,19 @@
             </div>
             <div class="sec-body" style="padding:8px 16px">
               <div class="filter-row">
-                <button class="filter-btn" class:active={userStatus === "all"} on:click={() => (userStatus = "all")}>All</button>
+                <button class="filter-btn" class:active={userStatus === "all" && userTierFilter === "all"} on:click={() => {
+                  userStatus = "all";
+                  userTierFilter = "all";
+                }}>All</button>
                 <button class="filter-btn" class:active={userStatus === "active"} on:click={() => (userStatus = "active")}>Active</button>
                 <button class="filter-btn y" class:active={userStatus === "vip"} on:click={() => (userStatus = "vip")}>VIP</button>
                 <button class="filter-btn r" class:active={userStatus === "banned"} on:click={() => (userStatus = "banned")}>Banned</button>
+                <button class="filter-btn" class:active={userTierFilter === "rookie"} on:click={() => (userTierFilter = "rookie")}>Rookie</button>
+                <button class="filter-btn" class:active={userTierFilter === "starter"} on:click={() => (userTierFilter = "starter")}>Starter</button>
+                <button class="filter-btn" class:active={userTierFilter === "pro"} on:click={() => (userTierFilter = "pro")}>Pro</button>
+                <button class="filter-btn" class:active={userTierFilter === "champion"} on:click={() => (userTierFilter = "champion")}>Champion</button>
+                <button class="filter-btn" class:active={userTierFilter === "master"} on:click={() => (userTierFilter = "master")}>Master</button>
+                <button class="filter-btn" class:active={userTierFilter === "legend"} on:click={() => (userTierFilter = "legend")}>Legend</button>
                 <button class="btn btn-ghost btn-sm" on:click={loadUsersAndLedger}>APPLY</button>
               </div>
               <div class="grid-4" style="margin-top:10px">
@@ -3025,7 +3037,7 @@
             </div>
             <div style="padding:0">
               <table class="tbl"><thead><tr>
-                <th>#</th><th>User</th><th>TG ID</th><th>Nation</th><th>KICK</th><th>Tier</th><th>Status</th><th>Actions</th>
+                <th>#</th><th>User</th><th>TG ID</th><th>Nation</th><th>KICK</th><th>Tier</th><th>Direct Referral (F1)</th><th>Indirect Referral (F2)</th><th>Status</th><th>Actions</th>
               </tr></thead><tbody>
                 {#each users as u, i}
                   <tr>
@@ -3035,6 +3047,8 @@
                     <td>{u.nationCode}</td>
                     <td style="font-family:var(--mono);color:var(--yellow)">{u.kick.toLocaleString()}</td>
                     <td><span class="tag tag-b">{tierLabel(userTier(u))}</span></td>
+                    <td>{u.directReferrals.toLocaleString()}</td>
+                    <td>{u.indirectReferrals.toLocaleString()}</td>
                     <td><span class={`tag ${statusTag(u.status)}`}>{u.status.toUpperCase()}</span></td>
                     <td style="display:flex;gap:6px;flex-wrap:wrap">
                       <button class="act-btn act-g" on:click={() => changeUserStatus(u.id, "active")}>ACTIVE</button>

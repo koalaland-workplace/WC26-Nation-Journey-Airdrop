@@ -3,8 +3,11 @@
   import type { AppPage, InfoTab } from "../stores/ui.store";
   import { HOME_HERO_SNAPSHOT, HOME_TOP_NATIONS } from "../modules/home/data";
   import { daysUntilKickoff, formatFans } from "../modules/home/utils";
+  import { fetchReferralState } from "../modules/referral/api";
+  import { resolveRankLine } from "../modules/session/utils";
   import { TIER_POLICY } from "../modules/tier/policy";
   import { hotSignalsStore } from "../stores/hot-signals.store";
+  import { sessionStore } from "../stores/session.store";
   import { spinStore } from "../stores/spin.store";
   import { updatedLabel } from "../modules/news/utils";
   import HotSignalsCompact from "../components/HotSignalsCompact.svelte";
@@ -14,6 +17,10 @@
 
   let countdownDays = daysUntilKickoff();
   let ticker: ReturnType<typeof setInterval> | null = null;
+  let directReferralF1 = 0;
+  let indirectReferralF2 = 0;
+  let syncedReferralSessionId = "";
+  let referralRequestId = 0;
 
   onMount(() => {
     ticker = setInterval(() => {
@@ -28,11 +35,35 @@
   $: hotSignals = $hotSignalsStore.items.slice(0, 5);
   $: homeHotUpdated = updatedLabel($hotSignalsStore.lastUpdatedAt);
   $: spinLeft = $spinStore.spin.left;
+  $: sessionId = $sessionStore.sessionId;
+  $: totalMickEarned = $sessionStore.kick;
+  $: currentRankLine = resolveRankLine(totalMickEarned);
   $: homeSpinBadge = spinLeft > 0 ? "FREE SPIN READY" : "SPINS USED";
   $: homeSpinSub = spinLeft > 0
     ? `${spinLeft} spin${spinLeft > 1 ? "s" : ""} left today · Win 50-200 KICK`
     : "All spins used today";
   $: homeSpinAction = spinLeft > 0 ? "⚡ SPIN NOW" : "⏰ OPEN SPIN";
+
+  $: if (!sessionId) {
+    syncedReferralSessionId = "";
+    directReferralF1 = 0;
+    indirectReferralF2 = 0;
+  }
+
+  $: if (sessionId && sessionId !== syncedReferralSessionId) {
+    syncedReferralSessionId = sessionId;
+    const currentRequestId = ++referralRequestId;
+    void (async () => {
+      try {
+        const payload = await fetchReferralState(sessionId);
+        if (currentRequestId !== referralRequestId) return;
+        directReferralF1 = Math.max(0, Math.floor(Number(payload.referral.f1Registered) || 0));
+        indirectReferralF2 = Math.max(0, Math.floor(Number(payload.referral.f2Registered) || 0));
+      } catch {
+        // Ignore transient referral API errors on home widget.
+      }
+    })();
+  }
 </script>
 
 <div id="page-home" class="pg on">
@@ -88,6 +119,26 @@
       <div class="home-quick-sub">5/5 Questions Left</div>
       <div class="home-quick-reward">Earn up to 500 KICK</div>
       <button class="btn b-b" type="button" on:click={() => onNavigate("quiz")}>START QUIZ</button>
+    </div>
+  </div>
+
+  <div class="card acc-b home-tier-card">
+    <div class="home-tier-title">Users Tracking</div>
+    <div class="home-tier-row">
+      <div class="home-tier-row-head">Direct Referral (F1)</div>
+      <div class="home-tier-row-desc">{directReferralF1.toLocaleString("en-US")}</div>
+    </div>
+    <div class="home-tier-row">
+      <div class="home-tier-row-head">Indirect Referral (F2)</div>
+      <div class="home-tier-row-desc">{indirectReferralF2.toLocaleString("en-US")}</div>
+    </div>
+    <div class="home-tier-row">
+      <div class="home-tier-row-head">Current Rank</div>
+      <div class="home-tier-row-desc">{currentRankLine}</div>
+    </div>
+    <div class="home-tier-row">
+      <div class="home-tier-row-head">Total MICK Earned</div>
+      <div class="home-tier-row-desc">{totalMickEarned.toLocaleString("en-US")}</div>
     </div>
   </div>
 

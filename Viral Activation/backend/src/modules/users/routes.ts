@@ -6,6 +6,7 @@ const tierSchema = z.enum(["rookie", "starter", "pro", "champion", "master", "le
 const listQuerySchema = z.object({
   q: z.string().optional(),
   status: z.enum(["active", "banned", "vip"]).optional(),
+  tier: tierSchema.optional(),
   limit: z.coerce.number().min(1).max(200).default(50),
   offset: z.coerce.number().min(0).default(0)
 });
@@ -70,11 +71,23 @@ function buildTierStats(rows: Array<{ kick: number; status: UserStatus }>) {
   return USER_TIER_POLICY.map((policy) => statsMap.get(policy.tier)!);
 }
 
+function tierKickWhere(tier: UserTier | undefined): { gte: number; lt?: number } | undefined {
+  if (!tier) return undefined;
+  const index = USER_TIER_POLICY.findIndex((policy) => policy.tier === tier);
+  if (index < 0) return undefined;
+  const current = USER_TIER_POLICY[index];
+  const next = USER_TIER_POLICY[index + 1];
+  if (!next) return { gte: current.minKick };
+  return { gte: current.minKick, lt: next.minKick };
+}
+
 export const userRoutes: FastifyPluginAsync = async (app) => {
   app.get("/api/v1/users", { preHandler: app.requirePermission("users.manage") }, async (request) => {
     const q = listQuerySchema.parse(request.query);
+    const tierKick = tierKickWhere(q.tier);
     const where = {
       ...(q.status ? { status: q.status } : {}),
+      ...(tierKick ? { kick: tierKick } : {}),
       ...(q.q
         ? {
             OR: [
@@ -101,10 +114,32 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
       })
     ]);
 
+    const userIds = items.map((user) => user.id);
+    const [directRows, indirectRows] =
+      userIds.length > 0
+        ? await Promise.all([
+            app.prisma.referralEvent.groupBy({
+              by: ["inviterUserId"],
+              where: { inviterUserId: { in: userIds }, level: 1 },
+              _count: { _all: true }
+            }),
+            app.prisma.referralEvent.groupBy({
+              by: ["inviterUserId"],
+              where: { inviterUserId: { in: userIds }, level: 2 },
+              _count: { _all: true }
+            })
+          ])
+        : [[], []];
+
+    const directMap = new Map(directRows.map((row) => [row.inviterUserId, row._count._all]));
+    const indirectMap = new Map(indirectRows.map((row) => [row.inviterUserId, row._count._all]));
+
     return {
       items: items.map((user) => ({
         ...user,
-        tier: resolveTierByKick(user.kick)
+        tier: resolveTierByKick(user.kick),
+        directReferrals: directMap.get(user.id) ?? 0,
+        indirectReferrals: indirectMap.get(user.id) ?? 0
       })),
       total,
       tierStats: buildTierStats(allUsersForStats)
