@@ -1752,9 +1752,6 @@
             <button type="button" class="qa-card" on:click={() => navigate("announce")}>
               <div class="qa-icon">📣</div><div class="qa-label">Announce</div>
             </button>
-            <button type="button" class="qa-card" on:click={() => navigate("spin")}>
-              <div class="qa-icon">🎡</div><div class="qa-label">Spin Config</div>
-            </button>
           </div>
 
           <div class="grid-5" style="margin-bottom:16px">
