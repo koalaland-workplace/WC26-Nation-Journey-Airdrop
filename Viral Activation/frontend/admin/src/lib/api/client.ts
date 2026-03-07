@@ -282,6 +282,36 @@ export async function adjustKick(
   });
 }
 
+export interface SpinGrantResponse {
+  ok: boolean;
+  userId: string;
+  username: string | null;
+  requested: number;
+  granted: number;
+  reason: string;
+  source: string;
+  spin: {
+    day: string;
+    used: number;
+    invite: number;
+    share: number;
+    tickets: number;
+    cap: number;
+    left: number;
+  };
+}
+
+export async function grantSpins(
+  accessToken: string,
+  payload: { userId: string; amount: number; reason: string; source?: string }
+): Promise<SpinGrantResponse> {
+  return request("/api/v1/spin/grant", {
+    method: "POST",
+    headers: authedHeaders(accessToken),
+    body: JSON.stringify(payload)
+  });
+}
+
 export interface FeatureConfig {
   key: string;
   value: Record<string, unknown>;

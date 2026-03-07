@@ -35,6 +35,7 @@
     logoutSession,
     openSseStream,
     refreshSession,
+    grantSpins,
     deleteSocialChannel,
     updateConfig,
     updateMatchStatus,
@@ -1154,6 +1155,8 @@
   let selectedUserId = "";
   let kickDelta = 2000;
   let kickReason = "Manual adjustment";
+  let spinGrantAmount = 1;
+  let spinGrantReason = "Manual spin grant";
 
   let spinConfigText = "{}";
   let penaltyConfigText = "{}";
@@ -2776,6 +2779,35 @@
     }
   }
 
+  async function submitSpinGrant() {
+    if (!selectedUserId) {
+      error = "Select a user first";
+      return;
+    }
+    loading = true;
+    error = "";
+    try {
+      const response = await withAccess((token) =>
+        grantSpins(token, {
+          userId: selectedUserId,
+          amount: Number(spinGrantAmount),
+          reason: spinGrantReason,
+          source: "admin_panel"
+        })
+      );
+      await Promise.all([loadUsersAndLedger(), loadDashboard()]);
+      showToast(
+        response.granted > 0
+          ? `SPINS granted (+${response.granted})`
+          : "No spins granted (daily cap reached)"
+      );
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loading = false;
+    }
+  }
+
   async function saveConfig(key: "spin" | "penalty") {
     loading = true;
     error = "";
@@ -3189,6 +3221,7 @@
         <div class="tb-chip live"><span class="tb-dot"></span>{dashboard?.onlineUsers ?? 0} ONLINE</div>
         <button type="button" class="tb-chip" on:click={() => navigate("announce")}>📣 QUICK ANN</button>
         <button type="button" class="tb-chip" on:click={() => navigate("users")}>⚡ KICK GRANT</button>
+        <button type="button" class="tb-chip" on:click={() => navigate("users")}>🎡 SPIN GRANT</button>
         <button type="button" class="tb-chip" on:click={doLogout}>🔐 LOGOUT</button>
       </div>
     </div>
@@ -3423,18 +3456,27 @@
 
           <div class="section">
             <div class="sec-hdr">
-              <div class="sec-title"><div class="sec-dot y"></div>KICK Grant / Adjust</div>
+              <div class="sec-title"><div class="sec-dot y"></div>KICK & SPIN Grant / Adjust</div>
             </div>
             <div class="sec-body">
-              <div style="display:grid;grid-template-columns:1fr 120px 1fr auto;gap:8px;align-items:center">
+              <div style="display:grid;grid-template-columns:1fr;gap:10px">
                 <select class="inp" bind:value={selectedUserId}>
                   {#each users as u}
                     <option value={u.id}>@{u.username ?? u.id} ({u.kick.toLocaleString()} KICK)</option>
                   {/each}
                 </select>
-                <input class="inp" type="number" bind:value={kickDelta} />
-                <input class="inp" bind:value={kickReason} />
-                <button class="btn btn-g" on:click={submitKickAdjust}>SUBMIT</button>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:10px">
+                  <div style="display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:center">
+                    <input class="inp" type="number" bind:value={kickDelta} />
+                    <input class="inp" bind:value={kickReason} />
+                    <button class="btn btn-g" on:click={submitKickAdjust}>ADD KICK</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:center">
+                    <input class="inp" type="number" min="1" max="100" bind:value={spinGrantAmount} />
+                    <input class="inp" bind:value={spinGrantReason} />
+                    <button class="btn btn-b" on:click={submitSpinGrant}>ADD SPINS</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
