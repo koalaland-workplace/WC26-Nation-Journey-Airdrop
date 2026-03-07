@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { writeAudit } from "../common/audit.js";
 
-const configKeySchema = z.enum(["spin", "penalty", "missions", "settings", "api", "rules"]);
+const configKeySchema = z.enum(["spin", "penalty", "missions", "settings", "api", "rules", "wc26token"]);
 const appRulesQuerySchema = z.object({
   language: z.string().trim().min(2).max(12).optional()
 });
@@ -151,7 +151,8 @@ export const configRoutes: FastifyPluginAsync = async (app) => {
           missions: "missions.manage",
           settings: "settings.manage",
           api: "api.manage",
-          rules: "announcements.manage"
+          rules: "announcements.manage",
+          wc26token: "economy.manage"
         };
         return app.requirePermission(permMap[key])(request, reply);
       }

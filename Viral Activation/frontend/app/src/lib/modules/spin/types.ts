@@ -45,6 +45,14 @@ export interface SpinUnlockRequest {
 export interface SpinUnlockResponse {
   ok: boolean;
   spin: SpinState;
+  economy?: SpinEconomy;
+  inviteBonus?: {
+    verified: boolean;
+    spinGranted: number;
+    kickGranted: number;
+    championPoolEligible: boolean;
+    pendingClaims: number;
+  };
 }
 
 export interface SpinRollRequest {

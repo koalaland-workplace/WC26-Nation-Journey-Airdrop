@@ -364,10 +364,22 @@
     spinStore.setError(null);
 
     try {
-      await spinStore.unlock(sessionId, type);
-      popup(formatUnlockMessage(type), true);
+      const unlock = await spinStore.unlock(sessionId, type);
+      if (type === "invite") {
+        if (unlock.inviteBonus?.verified) {
+          popup(formatUnlockMessage(type), true);
+        } else {
+          popup("👥 Invite verification pending. Reward is unlocked after F1 registration.", false);
+        }
+      } else {
+        popup(formatUnlockMessage(type), true);
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to unlock extra spin.";
+      const rawMessage = error instanceof Error ? error.message : "Unable to unlock extra spin.";
+      const message =
+        rawMessage === "invite_not_verified"
+          ? "Invite bonus is locked until 1 referred user completes registration."
+          : rawMessage;
       spinStore.setError(message);
       popup(message, false);
     }
@@ -388,10 +400,11 @@
     spinStore.setResult("Spinning...", false);
 
     try {
-      const roll = await spinStore.roll(sessionId);
+      const roll = await spinStore.roll(sessionId, false);
       const targetAngle = getSpinTargetAngle($spinStore.wheelAngle, roll.reward.id, 6);
 
       await animateWheel(targetAngle, 4200);
+      spinStore.applyRoll(roll);
 
       const result = formatSpinResult(roll.reward, roll.deltaApplied);
       spinStore.setResult(result.message, result.good);
@@ -524,7 +537,7 @@
     <div class="spin-boost-title">🚀 Unlock More Spins Today</div>
 
     <div class="spin-boost-item">
-      <span class="spin-boost-lbl">👥 Invite 1 participant</span>
+      <span class="spin-boost-lbl">👥 Invite 1 verified F1 (+1 spin +250 KICK)</span>
       <button
         class={`spin-boost-status ${capReached ? "sbs-done" : "sbs-todo"}`}
         type="button"

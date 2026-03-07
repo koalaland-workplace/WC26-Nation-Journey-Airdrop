@@ -291,7 +291,7 @@ export interface FeatureConfig {
 
 export async function getConfig(
   accessToken: string,
-  key: "spin" | "penalty" | "missions" | "settings" | "api" | "rules"
+  key: "spin" | "penalty" | "missions" | "settings" | "api" | "rules" | "wc26token"
 ) {
   return request<FeatureConfig>(`/api/v1/config/${key}`, {
     headers: authedHeaders(accessToken)
@@ -300,7 +300,7 @@ export async function getConfig(
 
 export async function updateConfig(
   accessToken: string,
-  key: "spin" | "penalty" | "missions" | "settings" | "api" | "rules",
+  key: "spin" | "penalty" | "missions" | "settings" | "api" | "rules" | "wc26token",
   value: Record<string, unknown>
 ) {
   return request<FeatureConfig>(`/api/v1/config/${key}`, {
@@ -334,6 +334,32 @@ export async function createAnnouncement(
     method: "POST",
     headers: authedHeaders(accessToken),
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateAnnouncement(
+  accessToken: string,
+  payload: { id: string; title?: string; message?: string; target?: string; publishNow?: boolean }
+): Promise<Announcement> {
+  return request(`/api/v1/announcements/${payload.id}`, {
+    method: "PUT",
+    headers: authedHeaders(accessToken),
+    body: JSON.stringify({
+      title: payload.title,
+      message: payload.message,
+      target: payload.target,
+      publishNow: payload.publishNow
+    })
+  });
+}
+
+export async function deleteAnnouncement(
+  accessToken: string,
+  id: string
+): Promise<{ ok: boolean; id: string }> {
+  return request(`/api/v1/announcements/${id}`, {
+    method: "DELETE",
+    headers: authedHeaders(accessToken)
   });
 }
 

@@ -39,6 +39,7 @@ export interface SessionViewState {
 
 export interface SessionInitRequest {
   sessionId?: string;
+  referralSessionId?: string;
 }
 
 export interface SessionInitResponse {

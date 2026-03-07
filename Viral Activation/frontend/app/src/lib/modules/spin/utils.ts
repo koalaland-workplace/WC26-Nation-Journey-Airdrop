@@ -71,7 +71,7 @@ export function formatSpinSubtitle(left: number): string {
 
 export function formatUnlockMessage(type: SpinUnlockType): string {
   return type === "invite"
-    ? "👥 Invite bonus granted (+1 spin)."
+    ? "👥 Verified F1 confirmed: +1 spin, +250 KICK, Champion Pool eligible."
     : "📣 WAR share bonus granted (+1 spin).";
 }
 

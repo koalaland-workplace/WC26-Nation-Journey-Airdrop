@@ -137,7 +137,7 @@
       </div>
       <div class="info-item">
         <strong style="color:var(--pw)">🎯 Extra Spin Unlock</strong><br />
-        1 free spin/day. Invite 1 participant or share WAR ranking to unlock extra spins.
+        1 free spin/day. Invite 1 verified F1 to claim +1 spin +250 KICK and Referral Champion Pool eligibility.
       </div>
     </div>
     <div class="info-actions-grid">
@@ -148,7 +148,7 @@
 
   <div class="ref-box" id="earn-ref-box">
     <div class="ref-title">👥 Referral Box</div>
-    <div class="ref-sub">Invite friends to increase your nation momentum and unlock more daily spins.</div>
+    <div class="ref-sub">Invite friends. Each verified F1 unlocks +1 spin, +250 KICK and counts for Referral Champion Pool.</div>
     <div class="ref-stats">
       <div class="rs"><div class="rv">{$earnStore.referral.boostMult}x</div><div class="rl">Referral Boost</div></div>
       <div class="rs"><div class="rv">{$sessionStore.spin.left}</div><div class="rl">Spin Left</div></div>

@@ -139,12 +139,27 @@ function createSpinStore() {
 
   async function unlock(sessionId: string, type: SpinUnlockType): Promise<SpinUnlockResponse> {
     const payload = await unlockSpin(sessionId, type);
-    applyState({ spin: payload.spin }, "ready");
+    applyState({ spin: payload.spin, economy: payload.economy }, "ready");
     return payload;
   }
 
-  async function roll(sessionId: string): Promise<SpinRollResponse> {
+  async function roll(sessionId: string, applyImmediately = true): Promise<SpinRollResponse> {
     const payload = await rollSpin(sessionId);
+    if (applyImmediately) {
+      lastFetchAtMs = Date.now();
+      applyState(
+        {
+          spin: payload.spin,
+          boosts: payload.boosts,
+          economy: payload.economy
+        },
+        "ready"
+      );
+    }
+    return payload;
+  }
+
+  function applyRoll(payload: SpinRollResponse): void {
     lastFetchAtMs = Date.now();
     applyState(
       {
@@ -154,7 +169,6 @@ function createSpinStore() {
       },
       "ready"
     );
-    return payload;
   }
 
   function setWheelAngle(angle: number): void {
@@ -184,6 +198,7 @@ function createSpinStore() {
     refresh,
     unlock,
     roll,
+    applyRoll,
     setWheelAngle,
     setRolling,
     setResult,

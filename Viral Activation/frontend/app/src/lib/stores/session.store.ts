@@ -3,6 +3,7 @@ import { initSession } from "../modules/session/api";
 import {
   clearStoredSessionId,
   getStoredSessionId,
+  resolveReferralSessionId,
   storeSessionId
 } from "../modules/session/utils";
 import type {
@@ -93,7 +94,10 @@ function createSessionStore() {
     const run = (async () => {
       update((current) => ({ ...current, status: "loading", errorMessage: null }));
       const storedSessionId = getStoredSessionId() ?? undefined;
-      const response = await initSession({ sessionId: storedSessionId });
+      const response = await initSession({
+        sessionId: storedSessionId,
+        referralSessionId: storedSessionId ? undefined : resolveReferralSessionId()
+      });
 
       if (!response.ok || !response.state) {
         throw new Error("invalid_session_response");

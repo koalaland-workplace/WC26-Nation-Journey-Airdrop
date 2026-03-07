@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { DEFAULT_SPIN_DAILY_CAP } from "./constants.js";
-import { getOrCreateGameSession, persistGameSession } from "./store.js";
+import { getOrCreateGameSession, persistGameSession, persistGameSessionWithClient } from "./store.js";
 import {
   applyKick,
   dayDiff,
@@ -24,7 +24,8 @@ import {
 const sessionIdSchema = z.string().trim().min(8).max(128);
 
 const initSessionBodySchema = z.object({
-  sessionId: z.string().trim().optional()
+  sessionId: z.string().trim().optional(),
+  referralSessionId: z.string().trim().optional()
 });
 
 const syncSessionBodySchema = z.object({
@@ -62,6 +63,8 @@ const spinUnlockSchema = z.object({
 const spinRollSchema = z.object({
   sessionId: sessionIdSchema
 });
+
+const VERIFIED_INVITE_KICK_BONUS = 250;
 
 const penaltyStartSchema = z.object({
   sessionId: sessionIdSchema,
@@ -345,7 +348,11 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/api/session/init", async (request) => {
     const body = initSessionBodySchema.parse(request.body ?? {});
-    const session = await getOrCreateGameSession(app.prisma, body.sessionId ?? null);
+    const session = await getOrCreateGameSession(
+      app.prisma,
+      body.sessionId ?? null,
+      body.referralSessionId ?? null
+    );
     ensureToday(session.state);
     await persistGameSession(app.prisma, session);
     return {
@@ -880,13 +887,84 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(409).send({ ok: false, error: "spin_cap_reached" });
     }
 
-    if (body.type === "invite") session.state.spin.invite += 1;
+    if (body.type === "invite") {
+      const pendingInvite = await app.prisma.referralEvent.findFirst({
+        where: {
+          inviterUserId: session.user.id,
+          invitedUserId: { not: null },
+          level: 1,
+          kickAward: 0
+        },
+        orderBy: { createdAt: "asc" },
+        select: { id: true }
+      });
+
+      if (!pendingInvite) {
+        return reply.status(409).send({ ok: false, error: "invite_not_verified" });
+      }
+
+      session.state.spin.invite += 1;
+      const kickGranted = applyKick(session.state, VERIFIED_INVITE_KICK_BONUS);
+      const ledgerEntry =
+        kickGranted !== 0
+          ? {
+              delta: kickGranted,
+              reason: "referral:f1_verified",
+              source: "referral"
+            }
+          : undefined;
+
+      await app.prisma.$transaction(async (tx) => {
+        const claim = await tx.referralEvent.updateMany({
+          where: {
+            id: pendingInvite.id,
+            inviterUserId: session.user.id,
+            level: 1,
+            kickAward: 0
+          },
+          data: {
+            kickAward: VERIFIED_INVITE_KICK_BONUS,
+            status: "rewarded"
+          }
+        });
+        if (claim.count <= 0) {
+          throw app.httpErrors.conflict("invite_bonus_already_claimed");
+        }
+
+        await persistGameSessionWithClient(tx, session, ledgerEntry);
+      });
+
+      const pendingClaims = await app.prisma.referralEvent.count({
+        where: {
+          inviterUserId: session.user.id,
+          invitedUserId: { not: null },
+          level: 1,
+          kickAward: 0
+        }
+      });
+
+      const view = sessionView(session.state);
+      return {
+        ok: true,
+        spin: view.spin,
+        economy: economyView(session.state.kick, session.state.economy.dailyEarned),
+        inviteBonus: {
+          verified: true,
+          spinGranted: 1,
+          kickGranted,
+          championPoolEligible: true,
+          pendingClaims
+        }
+      };
+    }
+
     if (body.type === "share") session.state.spin.share += 1;
 
     await persistGameSession(app.prisma, session);
     return {
       ok: true,
-      spin: sessionView(session.state).spin
+      spin: sessionView(session.state).spin,
+      economy: economyView(session.state.kick, session.state.economy.dailyEarned)
     };
   });
 

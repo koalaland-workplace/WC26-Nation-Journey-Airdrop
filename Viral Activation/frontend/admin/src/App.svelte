@@ -5,6 +5,7 @@
     adjustMysteryBoxTickets,
     adjustKick,
     createAnnouncement,
+    deleteAnnouncement,
     getMysteryBoxAllocations,
     downloadAuditLogsCsv,
     downloadKickLedgerCsv,
@@ -40,6 +41,7 @@
     updateMysteryBoxAllocations,
     updateReferralsConfig,
     toggleSocialChannel,
+    updateAnnouncement,
     updateUserStatus,
     upsertBoardMember,
     upsertMatch,
@@ -800,6 +802,41 @@
     isActive: boolean;
   };
 
+  type Wc26TokenUserFlag = {
+    enabled: boolean;
+    antiSybilPassed: boolean;
+    activeDays: number;
+    updatedAt: string | null;
+  };
+
+  type Wc26TokenConfig = {
+    pools: {
+      nationalWarBonusPool: number;
+      referralChampionPool: number;
+      miniGamesConversionPool: number;
+    };
+    conversion: {
+      minKick: number;
+      perUserCap: number;
+      activePeriodDays: number;
+      requireVerified: boolean;
+    };
+    userFlags: Record<string, Wc26TokenUserFlag>;
+  };
+
+  type Wc26TokenEligibleRow = {
+    id: string;
+    username: string;
+    telegramId: string | null;
+    totalKick: number;
+    activeDays: number;
+    antiSybilPassed: boolean;
+    enabled: boolean;
+    kickCounted: number;
+    estimatedWc26: number;
+    isEligible: boolean;
+  };
+
   function defaultSpinConfig() {
     return {
       dailyCap: 5,
@@ -823,6 +860,78 @@
       pvpWin: 2000,
       pvpLose: -2500,
       pvpBurn: 500
+    };
+  }
+
+  function defaultWc26TokenConfig(): Wc26TokenConfig {
+    return {
+      pools: {
+        nationalWarBonusPool: 1_000_000,
+        referralChampionPool: 1_000_000,
+        miniGamesConversionPool: 10_000_000
+      },
+      conversion: {
+        minKick: 10_000,
+        perUserCap: 1_000_000,
+        activePeriodDays: 7,
+        requireVerified: true
+      },
+      userFlags: {}
+    };
+  }
+
+  function normalizeWc26TokenConfig(raw: unknown): Wc26TokenConfig {
+    const defaults = defaultWc26TokenConfig();
+    const root = asRecord(raw);
+    const pools = asRecord(root.pools);
+    const conversion = asRecord(root.conversion);
+    const userFlagsNode = asRecord(root.userFlags);
+    const userFlags: Record<string, Wc26TokenUserFlag> = {};
+
+    for (const [userId, value] of Object.entries(userFlagsNode)) {
+      const node = asRecord(value);
+      userFlags[userId] = {
+        enabled: asBoolean(node.enabled, true),
+        antiSybilPassed: asBoolean(node.antiSybilPassed, false),
+        activeDays: Math.max(0, toSafeInt(String(node.activeDays ?? "0"), 0)),
+        updatedAt: asString(node.updatedAt, "").trim() || null
+      };
+    }
+
+    return {
+      pools: {
+        nationalWarBonusPool: Math.max(
+          0,
+          toSafeInt(String(pools.nationalWarBonusPool ?? defaults.pools.nationalWarBonusPool), defaults.pools.nationalWarBonusPool)
+        ),
+        referralChampionPool: Math.max(
+          0,
+          toSafeInt(String(pools.referralChampionPool ?? defaults.pools.referralChampionPool), defaults.pools.referralChampionPool)
+        ),
+        miniGamesConversionPool: Math.max(
+          1,
+          toSafeInt(
+            String(pools.miniGamesConversionPool ?? defaults.pools.miniGamesConversionPool),
+            defaults.pools.miniGamesConversionPool
+          )
+        )
+      },
+      conversion: {
+        minKick: Math.max(0, toSafeInt(String(conversion.minKick ?? defaults.conversion.minKick), defaults.conversion.minKick)),
+        perUserCap: Math.max(
+          1,
+          toSafeInt(String(conversion.perUserCap ?? defaults.conversion.perUserCap), defaults.conversion.perUserCap)
+        ),
+        activePeriodDays: Math.max(
+          1,
+          toSafeInt(
+            String(conversion.activePeriodDays ?? defaults.conversion.activePeriodDays),
+            defaults.conversion.activePeriodDays
+          )
+        ),
+        requireVerified: asBoolean(conversion.requireVerified, defaults.conversion.requireVerified)
+      },
+      userFlags
     };
   }
 
@@ -1064,9 +1173,16 @@
   let footballNewsProfileName = "";
 
   let announcements: Announcement[] = [];
+  let annEditingId = "";
   let annTitle = "";
   let annMessage = "";
   let annTarget = "all";
+  let wc26TokenConfig: Wc26TokenConfig = defaultWc26TokenConfig();
+  let wc26TokenUsers: AppUser[] = [];
+  let wc26TokenRows: Wc26TokenEligibleRow[] = [];
+  let wc26TokenEligibleUsers = 0;
+  let wc26TokenTotalKickCounted = 0;
+  let wc26TokenKickPerWc26 = 0;
   let rulesDefaultLanguage: RuleLanguageCode = "en";
   let rulesEditorLanguage: RuleLanguageCode = "en";
   let rulesEntries: Record<RuleLanguageCode, RuleContentEntry> = defaultRuleEntries();
@@ -1828,7 +1944,7 @@
       tasks.push(loadOperationalData(), loadLeaderboard(), loadReferrals(), loadMatches(), loadMissions(), loadSocialChannels());
     }
     if (can("economy.manage")) {
-      tasks.push(loadMysteryBox());
+      tasks.push(loadMysteryBox(), loadWc26TokenData());
     }
 
     await Promise.all(tasks);
@@ -1861,6 +1977,7 @@
     if (next === "matches") await loadMatches();
     if (next === "missions") await Promise.all([loadMissions(), loadSocialChannels()]);
     if (next === "mysterybox") await loadMysteryBox();
+    if (next === "wc26token") await loadWc26TokenData();
     if (next === "social") await Promise.all([loadMissions(), loadSocialChannels()]);
   }
 
@@ -1958,6 +2075,221 @@
 
   async function loadAnnouncements() {
     announcements = await withAccess((token) => listAnnouncements(token));
+  }
+
+  function beginEditAnnouncement(announcement: Announcement) {
+    annEditingId = announcement.id;
+    annTitle = announcement.title;
+    annMessage = announcement.message;
+    annTarget = announcement.target;
+  }
+
+  function resetAnnouncementForm() {
+    annEditingId = "";
+    annTitle = "";
+    annMessage = "";
+    annTarget = "all";
+  }
+
+  async function removeAnnouncement(announcement: Announcement) {
+    const ok = window.confirm(`Delete announcement "${announcement.title}"?`);
+    if (!ok) return;
+
+    loading = true;
+    error = "";
+    try {
+      await withAccess((token) => deleteAnnouncement(token, announcement.id));
+      if (annEditingId === announcement.id) {
+        resetAnnouncementForm();
+      }
+      await loadAnnouncements();
+      showToast("Announcement deleted");
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function listAllUsersForWc26Token(): Promise<AppUser[]> {
+    const all: AppUser[] = [];
+    const limit = 200;
+    let offset = 0;
+    let total = Number.POSITIVE_INFINITY;
+
+    while (offset < total) {
+      const pageData = await withAccess((token) => listUsers(token, { limit, offset }));
+      all.push(...pageData.items);
+      total = pageData.total;
+      if (pageData.items.length < limit) break;
+      offset += limit;
+    }
+
+    return all;
+  }
+
+  function inferredActiveDays(user: AppUser): number {
+    const createdAtMs = Date.parse(user.createdAt);
+    if (!Number.isFinite(createdAtMs)) return 0;
+    return Math.max(0, Math.floor((Date.now() - createdAtMs) / 86_400_000));
+  }
+
+  function resolveWc26UserFlag(user: AppUser): Wc26TokenUserFlag {
+    const fromConfig = wc26TokenConfig.userFlags[user.id];
+    return {
+      enabled: fromConfig?.enabled ?? true,
+      antiSybilPassed: fromConfig?.antiSybilPassed ?? user.status !== "banned",
+      activeDays: fromConfig?.activeDays ?? inferredActiveDays(user),
+      updatedAt: fromConfig?.updatedAt ?? null
+    };
+  }
+
+  function rebuildWc26TokenRows() {
+    const conversion = wc26TokenConfig.conversion;
+    const pool = Math.max(1, wc26TokenConfig.pools.miniGamesConversionPool);
+
+    const baseRows = wc26TokenUsers.map((user) => {
+      const flags = resolveWc26UserFlag(user);
+      const meetsKick = user.kick >= conversion.minKick;
+      const meetsActive = flags.activeDays >= conversion.activePeriodDays;
+      const meetsSybil = flags.antiSybilPassed;
+      const meetsVerified = !conversion.requireVerified || user.status !== "banned";
+      const isEligible = flags.enabled && meetsKick && meetsActive && meetsSybil && meetsVerified;
+      const kickCounted = isEligible ? Math.min(user.kick, conversion.perUserCap) : 0;
+      return {
+        id: user.id,
+        username: user.username ?? "unknown",
+        telegramId: user.telegramId,
+        totalKick: user.kick,
+        activeDays: flags.activeDays,
+        antiSybilPassed: flags.antiSybilPassed,
+        enabled: flags.enabled,
+        kickCounted,
+        estimatedWc26: 0,
+        isEligible
+      } satisfies Wc26TokenEligibleRow;
+    });
+
+    const totalKickCounted = baseRows.reduce((sum, row) => sum + row.kickCounted, 0);
+    wc26TokenRows = baseRows
+      .map((row) => ({
+        ...row,
+        estimatedWc26:
+          totalKickCounted > 0 ? Math.floor((row.kickCounted / totalKickCounted) * wc26TokenConfig.pools.miniGamesConversionPool) : 0
+      }))
+      .sort((left, right) => {
+        if (right.kickCounted !== left.kickCounted) return right.kickCounted - left.kickCounted;
+        return right.totalKick - left.totalKick;
+      });
+
+    wc26TokenEligibleUsers = wc26TokenRows.filter((row) => row.isEligible).length;
+    wc26TokenTotalKickCounted = totalKickCounted;
+    wc26TokenKickPerWc26 = totalKickCounted / pool;
+  }
+
+  async function loadWc26TokenData() {
+    const [config, allUsers] = await Promise.all([
+      withAccess((token) => getConfig(token, "wc26token")),
+      listAllUsersForWc26Token()
+    ]);
+    wc26TokenConfig = normalizeWc26TokenConfig(config.value);
+    wc26TokenUsers = allUsers;
+    rebuildWc26TokenRows();
+  }
+
+  async function saveWc26TokenConfig(nextConfig: Wc26TokenConfig, successMessage: string) {
+    loading = true;
+    error = "";
+    try {
+      const normalized = normalizeWc26TokenConfig(nextConfig);
+      const updated = await withAccess((token) =>
+        updateConfig(token, "wc26token", normalized as unknown as Record<string, unknown>)
+      );
+      wc26TokenConfig = normalizeWc26TokenConfig(updated.value);
+      rebuildWc26TokenRows();
+      showToast(successMessage);
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function changeWc26ConversionField(
+    field: "minKick" | "perUserCap" | "activePeriodDays",
+    label: string,
+    minValue: number
+  ) {
+    const current = wc26TokenConfig.conversion[field];
+    const raw = window.prompt(`Set ${label}`, String(current));
+    if (raw === null) return;
+    const nextValue = Math.max(minValue, toSafeInt(raw, current));
+    await saveWc26TokenConfig(
+      {
+        ...wc26TokenConfig,
+        conversion: {
+          ...wc26TokenConfig.conversion,
+          [field]: nextValue
+        }
+      },
+      `${label} updated`
+    );
+  }
+
+  async function toggleWc26UserEnabled(row: Wc26TokenEligibleRow) {
+    const now = new Date().toISOString();
+    const fromConfig = wc26TokenConfig.userFlags[row.id];
+    const current: Wc26TokenUserFlag = {
+      enabled: fromConfig?.enabled ?? row.enabled,
+      antiSybilPassed: fromConfig?.antiSybilPassed ?? row.antiSybilPassed,
+      activeDays: fromConfig?.activeDays ?? row.activeDays,
+      updatedAt: fromConfig?.updatedAt ?? null
+    };
+
+    await saveWc26TokenConfig(
+      {
+        ...wc26TokenConfig,
+        userFlags: {
+          ...wc26TokenConfig.userFlags,
+          [row.id]: {
+            ...current,
+            enabled: !row.enabled,
+            activeDays: row.activeDays,
+            antiSybilPassed: row.antiSybilPassed,
+            updatedAt: now
+          }
+        }
+      },
+      `User ${row.enabled ? "disabled" : "enabled"}`
+    );
+  }
+
+  async function toggleWc26AntiSybil(row: Wc26TokenEligibleRow) {
+    const now = new Date().toISOString();
+    const fromConfig = wc26TokenConfig.userFlags[row.id];
+    const current: Wc26TokenUserFlag = {
+      enabled: fromConfig?.enabled ?? row.enabled,
+      antiSybilPassed: fromConfig?.antiSybilPassed ?? row.antiSybilPassed,
+      activeDays: fromConfig?.activeDays ?? row.activeDays,
+      updatedAt: fromConfig?.updatedAt ?? null
+    };
+
+    await saveWc26TokenConfig(
+      {
+        ...wc26TokenConfig,
+        userFlags: {
+          ...wc26TokenConfig.userFlags,
+          [row.id]: {
+            ...current,
+            enabled: row.enabled,
+            activeDays: row.activeDays,
+            antiSybilPassed: !row.antiSybilPassed,
+            updatedAt: now
+          }
+        }
+      },
+      `Anti-Sybil marked as ${row.antiSybilPassed ? "not verified" : "verified"}`
+    );
   }
 
   function applyRulesConfig(value: unknown): void {
@@ -2405,6 +2737,9 @@
     try {
       await withAccess((token) => updateUserStatus(token, { id, status }));
       await loadUsersAndLedger();
+      if (can("economy.manage")) {
+        await loadWc26TokenData();
+      }
       showToast("User status updated");
     } catch (e) {
       error = (e as Error).message;
@@ -2430,6 +2765,9 @@
         })
       );
       await Promise.all([loadUsersAndLedger(), loadDashboard()]);
+      if (can("economy.manage")) {
+        await loadWc26TokenData();
+      }
       showToast("KICK adjusted successfully");
     } catch (e) {
       error = (e as Error).message;
@@ -2524,19 +2862,30 @@
     loading = true;
     error = "";
     try {
-      await withAccess((token) =>
-        createAnnouncement(token, {
-          title: annTitle,
-          message: annMessage,
-          target: annTarget,
-          publishNow: true
-        })
-      );
-      annTitle = "";
-      annMessage = "";
-      annTarget = "all";
+      const editing = annEditingId.length > 0;
+      if (annEditingId) {
+        await withAccess((token) =>
+          updateAnnouncement(token, {
+            id: annEditingId,
+            title: annTitle,
+            message: annMessage,
+            target: annTarget,
+            publishNow: true
+          })
+        );
+      } else {
+        await withAccess((token) =>
+          createAnnouncement(token, {
+            title: annTitle,
+            message: annMessage,
+            target: annTarget,
+            publishNow: true
+          })
+        );
+      }
+      resetAnnouncementForm();
       await loadAnnouncements();
-      showToast("Announcement broadcasted");
+      showToast(editing ? "Announcement updated" : "Announcement broadcasted");
     } catch (e) {
       error = (e as Error).message;
     } finally {
@@ -2642,6 +2991,13 @@
     leaderboardNations = [];
     auditLogs = [];
     announcements = [];
+    annEditingId = "";
+    wc26TokenConfig = defaultWc26TokenConfig();
+    wc26TokenUsers = [];
+    wc26TokenRows = [];
+    wc26TokenEligibleUsers = 0;
+    wc26TokenTotalKickCounted = 0;
+    wc26TokenKickPerWc26 = 0;
     rulesDefaultLanguage = "en";
     rulesEditorLanguage = "en";
     rulesEntries = defaultRuleEntries();
@@ -2701,7 +3057,11 @@
   $: currentTitle = TITLES[page];
   $: currentSub = SUBS[page];
   $: recentUsers = users.slice(0, 5);
-  $: eligibleTokenUsers = users.filter((u) => u.kick >= 5000);
+  $: {
+    wc26TokenUsers;
+    wc26TokenConfig;
+    rebuildWc26TokenRows();
+  }
   $: spinRewards = (() => {
     try {
       const parsed = JSON.parse(spinConfigText) as { rewards?: Array<{ id: string; chance: number; value: number }> };
@@ -3464,27 +3824,38 @@
       {#if page === "announce"}
         <div class="pg active" id="pg-announce">
           <div class="section">
-            <div class="sec-hdr"><div class="sec-title"><div class="sec-dot"></div>Broadcast Announcement</div></div>
+            <div class="sec-hdr">
+              <div class="sec-title"><div class="sec-dot"></div>{annEditingId ? "Edit Announcement" : "Broadcast Announcement"}</div>
+            </div>
             <div class="sec-body" style="display:grid;gap:10px">
               <div style="display:grid;grid-template-columns:1fr 180px;gap:8px">
                 <input class="inp" placeholder="Title" bind:value={annTitle} />
                 <input class="inp" placeholder="Target" bind:value={annTarget} />
               </div>
               <textarea class="inp" rows="4" placeholder="Message" bind:value={annMessage}></textarea>
-              <div><button class="btn btn-g" on:click={submitAnnouncement}>BROADCAST</button></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                {#if annEditingId}
+                  <button class="btn btn-ghost" on:click={resetAnnouncementForm}>CANCEL</button>
+                {/if}
+                <button class="btn btn-g" on:click={submitAnnouncement}>{annEditingId ? "SAVE CHANGES" : "BROADCAST"}</button>
+              </div>
             </div>
           </div>
 
           <div class="section">
             <div class="sec-hdr"><div class="sec-title"><div class="sec-dot b"></div>History</div></div>
             <div class="sec-body" style="padding:0">
-              <table class="tbl"><thead><tr><th>Time</th><th>Title</th><th>Target</th><th>Status</th></tr></thead><tbody>
+              <table class="tbl"><thead><tr><th>Time</th><th>Title</th><th>Target</th><th>Status</th><th>Actions</th></tr></thead><tbody>
                 {#each announcements as ann}
                   <tr>
                     <td>{new Date(ann.createdAt).toLocaleString()}</td>
                     <td>{ann.title}</td>
                     <td>{ann.target}</td>
                     <td><span class={`tag ${ann.publishedAt ? "tag-g" : "tag-y"}`}>{ann.publishedAt ? "PUBLISHED" : "DRAFT"}</span></td>
+                    <td style="display:flex;gap:6px;flex-wrap:wrap">
+                      <button class="btn btn-ghost btn-sm" on:click={() => beginEditAnnouncement(ann)}>EDIT</button>
+                      <button class="btn btn-ghost btn-sm" on:click={() => removeAnnouncement(ann)}>DELETE</button>
+                    </td>
                   </tr>
                 {/each}
               </tbody></table>
@@ -3705,13 +4076,117 @@
       {#if page === "wc26token"}
         <div class="pg active" id="pg-wc26token">
           <div class="section">
-            <div class="sec-hdr"><div class="sec-title"><div class="sec-dot y"></div>Eligible Holders (>= 5,000 KICK)</div></div>
+            <div class="sec-hdr">
+              <div class="sec-title"><div class="sec-dot y"></div>WC26 Token Pools</div>
+              <button class="btn btn-ghost btn-sm" on:click={loadWc26TokenData}>REFRESH</button>
+            </div>
+            <div class="sec-body" style="display:grid;gap:12px">
+              <div class="mb-tier" style="text-align:left">
+                <div class="mb-tier-name" style="font-size:18px;margin:0">National War Bonus Pool - {wc26TokenConfig.pools.nationalWarBonusPool.toLocaleString()} WC26</div>
+              </div>
+              <div class="mb-tier" style="text-align:left">
+                <div class="mb-tier-name" style="font-size:18px;margin:0">Referral Champion Pool - {wc26TokenConfig.pools.referralChampionPool.toLocaleString()} WC26</div>
+                <div class="mb-tier-policy" style="max-width:none;margin-top:6px">
+                  Rewards the Top 100 global referrers at the official World Cup 2026 snapshot.
+                </div>
+              </div>
+              <div class="mb-tier" style="text-align:left">
+                <div class="mb-tier-name" style="font-size:18px;margin:0">Mini Games Conversion Pool - {wc26TokenConfig.pools.miniGamesConversionPool.toLocaleString()} WC26</div>
+                <div class="mb-tier-policy" style="max-width:none;margin-top:6px">
+                  Số Users đủ điều kiện chuyển đổi: <b>{wc26TokenEligibleUsers.toLocaleString()}</b>
+                </div>
+                <div class="mb-tier-policy" style="max-width:none">
+                  Tổng số KICK được tính để chuyển đổi: <b>{wc26TokenTotalKickCounted.toLocaleString()}</b>
+                </div>
+                <div class="mb-tier-policy" style="max-width:none">
+                  Tạm tính: 1 WC26 = <b>{wc26TokenKickPerWc26.toLocaleString("en-US", { maximumFractionDigits: 4 })}</b> KICK
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sec-hdr"><div class="sec-title"><div class="sec-dot b"></div>Conversion Conditions</div></div>
+            <div class="sec-body" style="display:grid;gap:10px">
+              <div class="right-item">
+                <div>
+                  <div class="right-name">Total Accumulate Earned KICK</div>
+                  <div>{wc26TokenConfig.conversion.minKick.toLocaleString()} KICK</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" on:click={() => changeWc26ConversionField("minKick", "Minimum KICK", 0)}>CHANGE</button>
+              </div>
+              <div class="right-item">
+                <div>
+                  <div class="right-name">Per-User Conversion Cap</div>
+                  <div>{wc26TokenConfig.conversion.perUserCap.toLocaleString()} KICK</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" on:click={() => changeWc26ConversionField("perUserCap", "Per-user conversion cap", 1)}>CHANGE</button>
+              </div>
+              <div class="right-item">
+                <div>
+                  <div class="right-name">Active Period</div>
+                  <div>{wc26TokenConfig.conversion.activePeriodDays.toLocaleString()} days</div>
+                </div>
+                <button class="btn btn-ghost btn-sm" on:click={() => changeWc26ConversionField("activePeriodDays", "Required active period (days)", 1)}>CHANGE</button>
+              </div>
+              <div class="right-item">
+                <div>
+                  <div class="right-name">Successfully pass Anti-Sybil and compliance checks</div>
+                  <div>{wc26TokenConfig.conversion.requireVerified ? "Verified required" : "Verification optional"}</div>
+                </div>
+                <span class={`tag ${wc26TokenConfig.conversion.requireVerified ? "tag-g" : "tag-y"}`}>
+                  {wc26TokenConfig.conversion.requireVerified ? "VERIFIED" : "OPTIONAL"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="sec-hdr">
+              <div class="sec-title"><div class="sec-dot"></div>Eligible Users Tracking</div>
+            </div>
             <div class="sec-body" style="padding:0">
-              <table class="tbl"><thead><tr><th>User</th><th>Nation</th><th>KICK</th><th>Status</th></tr></thead><tbody>
-                {#each eligibleTokenUsers as u}
-                  <tr><td>@{u.username ?? "unknown"}</td><td>{u.nationCode}</td><td>{u.kick.toLocaleString()}</td><td>{u.status}</td></tr>
-                {/each}
-              </tbody></table>
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Total KICK</th>
+                    <th>Active Period</th>
+                    <th>Anti-Sybil</th>
+                    <th>KICK Counted</th>
+                    <th>Estimated WC26</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#if wc26TokenRows.length === 0}
+                    <tr><td colspan="7" style="text-align:center;color:var(--text3)">No user data</td></tr>
+                  {:else}
+                    {#each wc26TokenRows as row}
+                      <tr>
+                        <td>@{row.username}</td>
+                        <td>{row.totalKick.toLocaleString()}</td>
+                        <td>{row.activeDays.toLocaleString()} / {wc26TokenConfig.conversion.activePeriodDays.toLocaleString()} days</td>
+                        <td>
+                          <span class={`tag ${row.antiSybilPassed ? "tag-g" : "tag-r"}`}>
+                            {row.antiSybilPassed ? "VERIFIED" : "PENDING"}
+                          </span>
+                        </td>
+                        <td>{row.kickCounted.toLocaleString()}</td>
+                        <td>{row.estimatedWc26.toLocaleString()}</td>
+                        <td style="display:flex;gap:6px;flex-wrap:wrap">
+                          <button class="btn btn-ghost btn-sm" on:click={() => toggleWc26AntiSybil(row)}>
+                            {row.antiSybilPassed ? "UNVERIFY" : "VERIFY"}
+                          </button>
+                          <button class="btn btn-ghost btn-sm" on:click={() => toggleWc26UserEnabled(row)}>
+                            {row.enabled ? "DISABLE" : "ENABLE"}
+                          </button>
+                        </td>
+                      </tr>
+                    {/each}
+                  {/if}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
