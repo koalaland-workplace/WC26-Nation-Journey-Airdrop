@@ -156,6 +156,7 @@
       items: [
         { id: "dashboard", icon: "⊞", label: "Dashboard" },
         { id: "users", icon: "👥", label: "Users" },
+        { id: "mysterybox", icon: "🎁", label: "Ranking Tiers" },
         { id: "leaderboard", icon: "🏆", label: "Leaderboard" },
         { id: "referrals", icon: "🔗", label: "Referrals" },
         { id: "matches", icon: "⚽", label: "Matches" },
@@ -168,7 +169,6 @@
       label: "💰 Economy",
       items: [
         { id: "rewards", icon: "💎", label: "Rewards Dist." },
-        { id: "mysterybox", icon: "🎁", label: "Ranking Tiers" },
         { id: "wc26token", icon: "🪙", label: "WC26 Token" },
         { id: "nationpass", icon: "🏴", label: "Nation Pass" }
       ]
