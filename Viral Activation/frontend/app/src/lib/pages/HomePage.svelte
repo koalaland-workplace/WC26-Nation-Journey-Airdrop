@@ -92,14 +92,13 @@
   $: currentTierLabel = currentTier?.label ?? "Rookie";
   $: nextTierLabel = nextTier ? nextTier.label : "Max Tier Reached";
   $: nextTierKickRequired = nextTier ? nextTier.minKick : (currentTier?.minKick ?? totalKickEarned);
-  $: kickProgressLabel = `${totalKickEarned.toLocaleString("en-US")} / ${nextTierKickRequired.toLocaleString("en-US")} KICK`;
-  $: tierProgressPct = (() => {
-    if (!nextTier || !currentTier) return 100;
-    const span = Math.max(1, nextTier.minKick - currentTier.minKick);
-    const progressed = totalKickEarned - currentTier.minKick;
-    return Math.max(0, Math.min(100, (progressed / span) * 100));
-  })();
-  $: totalReferrals = directReferralF1 + indirectReferralF2;
+  $: kickProgressValue = nextTier ? Math.min(totalKickEarned, nextTierKickRequired) : nextTierKickRequired;
+  $: kickProgressCompact = nextTier
+    ? `${kickProgressValue.toLocaleString("en-US")}/${nextTierKickRequired.toLocaleString("en-US")}`
+    : "MAX";
+  $: risingBoxTicketCount = Math.max(0, Math.floor(Number($sessionStore.spin.tickets) || 0));
+  $: eliteBoxTicketCount = "-";
+  $: legacyBoxTicketCount = "-";
   $: homeSpinBadge = spinLeft > 0 ? "FREE SPIN READY" : "SPINS USED";
   $: homeSpinSub = spinLeft > 0
     ? `${spinLeft} spin${spinLeft > 1 ? "s" : ""} left today · Win 50-200 KICK`
@@ -196,41 +195,53 @@
   </div>
 
   <div class="card acc-b home-journey-card">
-    <div class="home-journey-head">
-      <div class="home-journey-title">🧭 Your Journey Stats</div>
-      <div class="home-journey-tier-pill">{currentTierLabel}</div>
-    </div>
-    <div class="home-journey-grid">
-      <div class="home-journey-item">
-        <div class="home-journey-label">Current Tier</div>
-        <div class="home-journey-value">{currentTierLabel}</div>
-      </div>
-      <div class="home-journey-item">
-        <div class="home-journey-label">Next Tier</div>
-        <div class="home-journey-value">{nextTierLabel}</div>
-      </div>
-      <div class="home-journey-item home-journey-item-wide">
-        <div class="home-journey-label">KICK Progress</div>
-        <div class="home-journey-value home-journey-mono">{kickProgressLabel}</div>
-        <div class="home-journey-progress-track">
-          <span class="home-journey-progress-fill" style={`width:${tierProgressPct.toFixed(2)}%`}></span>
+    <div class="home-journey-title">🧭 Your Journey Stats</div>
+    <div class="home-journey-table">
+      <div class="home-journey-row">
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Current Tier</div>
+          <div class="home-journey-value">{currentTierLabel}</div>
+        </div>
+        <div class="home-journey-cell">
+          <div class="home-journey-topline">
+            <span class="home-journey-label">Next Tier</span>
+            <span class="home-journey-progress">{kickProgressCompact}</span>
+          </div>
+          <div class="home-journey-value">{nextTierLabel}</div>
         </div>
       </div>
-      <div class="home-journey-item">
-        <div class="home-journey-label">Direct Referrals (F1)</div>
-        <div class="home-journey-value home-journey-mono">{directReferralF1.toLocaleString("en-US")}</div>
+
+      <div class="home-journey-row">
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Direct Referrals (F1)</div>
+          <div class="home-journey-value home-journey-mono">{directReferralF1.toLocaleString("en-US")}</div>
+        </div>
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Indirect Referrals (F2)</div>
+          <div class="home-journey-value home-journey-mono">{indirectReferralF2.toLocaleString("en-US")}</div>
+        </div>
       </div>
-      <div class="home-journey-item">
-        <div class="home-journey-label">Indirect Referrals (F2)</div>
-        <div class="home-journey-value home-journey-mono">{indirectReferralF2.toLocaleString("en-US")}</div>
+
+      <div class="home-journey-row">
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Total KICK Earned</div>
+          <div class="home-journey-value home-journey-kick">{totalKickEarned.toLocaleString("en-US")}</div>
+        </div>
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Rising Box Ticket</div>
+          <div class="home-journey-value home-journey-mono">{risingBoxTicketCount.toLocaleString("en-US")}</div>
+        </div>
       </div>
-      <div class="home-journey-item home-journey-item-wide">
-        <div class="home-journey-label">Total Referrals (F1 + F2)</div>
-        <div class="home-journey-value home-journey-mono">{totalReferrals.toLocaleString("en-US")}</div>
-      </div>
-      <div class="home-journey-item home-journey-item-wide">
-        <div class="home-journey-label">Total KICK Earned</div>
-        <div class="home-journey-value home-journey-kick">{totalKickEarned.toLocaleString("en-US")} KICK</div>
+
+      <div class="home-journey-row">
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Elite Box Ticket</div>
+          <div class="home-journey-value home-journey-mono">{eliteBoxTicketCount}</div>
+        </div>
+        <div class="home-journey-cell">
+          <div class="home-journey-label">Legacy Box Ticket</div>
+          <div class="home-journey-value home-journey-mono">{legacyBoxTicketCount}</div>
+        </div>
       </div>
     </div>
   </div>
