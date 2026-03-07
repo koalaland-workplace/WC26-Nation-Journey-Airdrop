@@ -34,6 +34,12 @@
   }
 
   onMount(() => {
+    const telegram = (window as typeof window & {
+      Telegram?: { WebApp?: { ready?: () => void; expand?: () => void } };
+    }).Telegram?.WebApp;
+    telegram?.ready?.();
+    telegram?.expand?.();
+
     languageStore.init();
     const unsubscribeLanguage = languageStore.subscribe((state) => {
       applyDomTranslations(state.current);
