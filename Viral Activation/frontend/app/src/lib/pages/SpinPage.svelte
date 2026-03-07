@@ -463,8 +463,11 @@
       ctx.lineWidth = 1.2;
       ctx.stroke();
 
-      const iconDistance = outerRadius * 0.56;
-      const textDistance = outerRadius * 0.69;
+      const hasNumericTop = /^\d+$/.test(segment.labelTop) || segment.labelTop.includes("x");
+      const hasLongLabel = segment.labelTop.length >= 5 || segment.labelBottom.length >= 5;
+      const iconDistance = outerRadius * (hasLongLabel ? 0.48 : 0.53);
+      const textDistance = outerRadius * (hasLongLabel ? 0.8 : 0.74);
+      const iconFontSize = hasLongLabel ? 12 : 14;
       const iconX = centerX + Math.cos(mid) * iconDistance;
       const iconY = centerY + Math.sin(mid) * iconDistance;
       const textX = centerX + Math.cos(mid) * textDistance;
@@ -475,7 +478,7 @@
       ctx.rotate(mid + Math.PI / 2);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = '700 15px "Montserrat", sans-serif';
+      ctx.font = `700 ${iconFontSize}px "Montserrat", sans-serif`;
       ctx.fillStyle = "#ffffff";
       ctx.shadowColor = segment.rim;
       ctx.shadowBlur = 6;
@@ -490,17 +493,17 @@
       ctx.shadowColor = "rgba(0,0,0,.85)";
       ctx.shadowBlur = 3;
       ctx.fillStyle = segment.text;
-      if (/^\d+$/.test(segment.labelTop) || segment.labelTop.includes("x")) {
-        ctx.font = '700 16px "JetBrains Mono", monospace';
-        ctx.fillText(segment.labelTop, 0, -5);
-        ctx.font = '700 8px "Montserrat", sans-serif';
-        ctx.fillStyle = "rgba(255,255,255,.7)";
-        ctx.fillText(segment.labelBottom, 0, 8);
-      } else {
-        ctx.font = '700 10px "Montserrat", sans-serif';
+      if (hasNumericTop) {
+        ctx.font = `700 ${hasLongLabel ? 14 : 16}px "JetBrains Mono", monospace`;
         ctx.fillText(segment.labelTop, 0, -4);
+        ctx.font = `700 ${hasLongLabel ? 7 : 8}px "Montserrat", sans-serif`;
+        ctx.fillStyle = "rgba(255,255,255,.7)";
+        ctx.fillText(segment.labelBottom, 0, 7);
+      } else {
+        ctx.font = `700 ${hasLongLabel ? 8.4 : 10}px "Montserrat", sans-serif`;
+        ctx.fillText(segment.labelTop, 0, -3);
         if (segment.labelBottom) {
-          ctx.fillText(segment.labelBottom, 0, 8);
+          ctx.fillText(segment.labelBottom, 0, 6.5);
         }
       }
       ctx.restore();
