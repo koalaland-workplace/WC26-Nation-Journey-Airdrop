@@ -8,6 +8,8 @@ const APP_HOT_SIGNAL_LANGUAGES = ["en", "es", "pt", "kr", "jp"] as const;
 type AppHotSignalLanguage = (typeof APP_HOT_SIGNAL_LANGUAGES)[number];
 const HOT_SIGNAL_PROVIDER = "hot-signal";
 const HOT_SIGNAL_FEED_SIZE = 5;
+const HOT_SIGNAL_REFILL_MIN_COUNT = 3;
+const HOT_SIGNAL_REFILL_GRACE_MINUTES = 45;
 
 const GNEWS_DEFAULT_SEARCH_QUERY = [
   "\"World Cup 2026\"",
@@ -23,6 +25,32 @@ const GNEWS_DEFAULT_SEARCH_QUERY = [
 ].join(" OR ");
 
 const GNEWS_DEFAULT_NEWS_PATH = `/search?q=${encodeURIComponent(GNEWS_DEFAULT_SEARCH_QUERY)}&max=8&in=title,description`;
+const GNEWS_MULTI_BUCKET_QUERIES = [
+  {
+    id: "world-cup-2026",
+    q: ["\"World Cup 2026\"", "\"FIFA World Cup 2026\"", "\"2026 World Cup\" host", "\"2026 World Cup\" schedule"].join(
+      " OR "
+    )
+  },
+  {
+    id: "national-teams",
+    q: ["\"national team\" football", "\"international football\"", "\"World Cup qualifier\"", "coach", "federation"].join(" OR ")
+  },
+  {
+    id: "star-players",
+    q: ["Mbappe", "Messi", "Bellingham", "Vinicius", "Haaland", "Yamal", "Ronaldo", "\"national team\" star"].join(" OR ")
+  },
+  {
+    id: "transfers-injuries",
+    q: ["\"football transfer\"", "\"football injury\"", "\"transfer window\" football", "\"squad update\" football"].join(" OR ")
+  },
+  {
+    id: "fifa-governance",
+    q: ["FIFA sanction", "\"Court of Arbitration for Sport\" football", "\"football federation\"", "\"World Cup\" controversy"].join(
+      " OR "
+    )
+  }
+] as const;
 
 const footballNewsSchema = z.object({
   enabled: z.coerce.boolean().default(false),
@@ -798,6 +826,34 @@ function buildNewsUrl(config: FootballNewsConfig): URL {
   return url;
 }
 
+function buildGnewsBucketUrls(config: FootballNewsConfig): URL[] {
+  const baseUrl = buildNewsUrl(config);
+  const configuredQuery = compactSpaces(baseUrl.searchParams.get("q") ?? "");
+  const bucketQueries = [
+    ...(configuredQuery ? [{ id: "configured", q: configuredQuery }] : []),
+    ...GNEWS_MULTI_BUCKET_QUERIES
+  ];
+
+  const seen = new Set<string>();
+  const urls: URL[] = [];
+  for (const bucket of bucketQueries) {
+    const normalizedQ = compactSpaces(bucket.q);
+    if (!normalizedQ || seen.has(normalizedQ.toLowerCase())) continue;
+    seen.add(normalizedQ.toLowerCase());
+    const url = new URL(baseUrl.toString());
+    url.searchParams.set("q", normalizedQ);
+    if (!url.searchParams.get("max")) {
+      url.searchParams.set("max", "6");
+    } else {
+      url.searchParams.set("max", String(Math.max(4, Number(url.searchParams.get("max")) || 6)));
+    }
+    url.searchParams.set("in", "title,description");
+    urls.push(url);
+  }
+
+  return urls.length > 0 ? urls : [baseUrl];
+}
+
 function buildProviderHeaders(config: FootballNewsConfig): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/json"
@@ -819,43 +875,76 @@ async function fetchProviderNews(config: FootballNewsConfig): Promise<{
   items: NormalizedNewsItem[];
   fetched: number;
 }> {
-  const url = buildNewsUrl(config);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.polling.timeoutMs);
-
   const headers = buildProviderHeaders(config);
+  const urls = config.provider === "gnews" ? buildGnewsBucketUrls(config) : [buildNewsUrl(config)];
+  const results = await Promise.allSettled(
+    urls.map(async (url) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), config.polling.timeoutMs);
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers,
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          const text = (await response.text()).slice(0, 400);
+          throw new Error(`Football provider request failed (${response.status}): ${text || "no message"}`);
+        }
+        const payload = (await response.json()) as unknown;
+        const records = extractArray(payload);
+        const mapped = records
+          .map((item) => normalizeNewsRecord(item, config))
+          .filter((item): item is NormalizedNewsItem => item !== null)
+          .map((item) => ({
+            ...item,
+            rawPayload: {
+              ...item.rawPayload,
+              gnewsBucketUrl: url.toString()
+            }
+          }));
+        return {
+          requestUrl: url.toString(),
+          fetched: records.length,
+          items: mapped
+        };
+      } finally {
+        clearTimeout(timer);
+      }
+    })
+  );
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "GET",
-      headers,
-      signal: controller.signal
-    });
-  } finally {
-    clearTimeout(timer);
+  const success: Array<{ requestUrl: string; fetched: number; items: NormalizedNewsItem[] }> = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      success.push({
+        requestUrl: result.value.requestUrl,
+        fetched: result.value.fetched,
+        items: result.value.items as NormalizedNewsItem[]
+      });
+    }
   }
 
-  if (!response.ok) {
-    const text = (await response.text()).slice(0, 400);
-    throw new Error(`Football provider request failed (${response.status}): ${text || "no message"}`);
+  if (success.length === 0) {
+    const firstFailure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    throw firstFailure?.reason instanceof Error ? firstFailure.reason : new Error("Football provider request failed");
   }
 
-  const payload = (await response.json()) as unknown;
-  const records = extractArray(payload);
-  const mapped = records
-    .map((item) => normalizeNewsRecord(item, config))
-    .filter((item): item is NormalizedNewsItem => item !== null);
-
+  const requestUrls: string[] = [];
+  let fetched = 0;
   const deduped = new Map<string, NormalizedNewsItem>();
-  for (const item of mapped) {
-    deduped.set(item.providerItemId, item);
+  for (const result of success) {
+    requestUrls.push(result.requestUrl);
+    fetched += result.fetched;
+    for (const item of result.items) {
+      deduped.set(item.providerItemId, item);
+    }
   }
 
   return {
-    requestUrl: url.toString(),
+    requestUrl: requestUrls.join(" | "),
     items: [...deduped.values()],
-    fetched: records.length
+    fetched
   };
 }
 
@@ -1278,6 +1367,29 @@ function addMinutesIso(minutes: number): string {
   return new Date(Date.now() + minutes * 60_000).toISOString();
 }
 
+function isPastIso(value: string | null): boolean {
+  if (!value) return false;
+  const ms = new Date(value).getTime();
+  return !Number.isNaN(ms) && Date.now() >= ms;
+}
+
+async function shouldRefillHotSignals(app: FastifyInstance, state: SyncState): Promise<boolean> {
+  const count = await app.prisma.newsItem.count({
+    where: {
+      provider: HOT_SIGNAL_PROVIDER,
+      language: "en"
+    }
+  });
+  if (count >= HOT_SIGNAL_FEED_SIZE) return false;
+
+  const lastAttemptAtMs = state.lastAttemptAt ? new Date(state.lastAttemptAt).getTime() : 0;
+  if (!Number.isNaN(lastAttemptAtMs) && Date.now() - lastAttemptAtMs < HOT_SIGNAL_REFILL_GRACE_MINUTES * 60_000) {
+    return false;
+  }
+
+  return count < HOT_SIGNAL_REFILL_MIN_COUNT || (count < HOT_SIGNAL_FEED_SIZE && isPastIso(state.nextRunAt));
+}
+
 function maskApiKey(apiKey: string): string {
   const trimmed = apiKey.trim();
   if (!trimmed) return "";
@@ -1468,7 +1580,8 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
 
   const tickSchedule = async () => {
     if (state.running) return;
-    if (state.nextRunAt) {
+    const refillNeeded = await shouldRefillHotSignals(app, state);
+    if (!refillNeeded && state.nextRunAt) {
       const nextRunMs = new Date(state.nextRunAt).getTime();
       if (!Number.isNaN(nextRunMs) && Date.now() < nextRunMs) return;
     }
