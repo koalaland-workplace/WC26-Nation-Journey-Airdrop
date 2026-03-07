@@ -97,31 +97,54 @@
     return `https://t.me/${botUsername}/${appShortName}?startapp=${encodeURIComponent(startAppSessionId)}`;
   }
 
+  function legacyCopyToClipboard(text: string): boolean {
+    const input = document.createElement("textarea");
+    input.value = text;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    const copied = document.execCommand("copy");
+    document.body.removeChild(input);
+    return copied;
+  }
+
   async function copyInviteLink(): Promise<void> {
     if (!inviteLink) {
       showFlash("Invite link is not ready yet.");
       return;
     }
 
+    let copied = false;
     try {
-      if (navigator.clipboard && window.isSecureContext) {
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(inviteLink);
-      } else {
-        const input = document.createElement("textarea");
-        input.value = inviteLink;
-        input.setAttribute("readonly", "");
-        input.style.position = "fixed";
-        input.style.left = "-9999px";
-        document.body.appendChild(input);
-        input.select();
-        const copied = document.execCommand("copy");
-        document.body.removeChild(input);
-        if (!copied) throw new Error("copy_failed");
+        copied = true;
       }
-      showFlash("✅ Invite link copied.");
     } catch {
-      showFlash("❌ Unable to copy invite link.");
+      copied = false;
     }
+
+    if (!copied) {
+      copied = legacyCopyToClipboard(inviteLink);
+    }
+
+    if (copied) {
+      showFlash("✅ Invite link copied.");
+      return;
+    }
+
+    const manual = window.prompt("Copy invite link:", inviteLink);
+    if (manual !== null) {
+      showFlash("📋 Invite link ready to copy.");
+      return;
+    }
+
+    showFlash("❌ Unable to copy invite link.");
   }
 
   function openTaskChannel(task: EarnTask): void {
