@@ -2061,21 +2061,6 @@ a {
   }
 }
 
-.spin-ball-label {
-  position: absolute;
-  bottom: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  color: var(--y);
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-shadow: 0 0 8px rgba(245, 197, 66, 0.8);
-}
-
 .spin-big-btn {
   position: relative;
   z-index: 1;
@@ -3166,6 +3151,48 @@ a {
   margin-bottom: 8px;
 }
 
+.ref-invite-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.ref-invite-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--pw);
+  letter-spacing: 0.2px;
+}
+
+.ref-invite-link {
+  background: var(--bg3);
+  border: 1px solid var(--br);
+  border-radius: 9px;
+  padding: 7px 9px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--c-blue);
+  word-break: break-all;
+}
+
+.ref-copy-btn {
+  width: auto;
+  align-self: flex-end;
+  min-height: 30px;
+  padding: 7px 12px;
+  font-size: 9px;
+  letter-spacing: 0.55px;
+}
+
+.ref-copy-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .ref-stats {
   display: flex;
   gap: 6px;
@@ -3510,8 +3537,4 @@ a {
     font-size: 30px;
   }
 
-  .spin-ball-label {
-    bottom: -20px;
-    font-size: 8px;
-  }
 }

@@ -7,6 +7,9 @@
   import type { EarnTask } from "../modules/earn/types";
   import type { AppPage } from "../stores/ui.store";
 
+  const DEFAULT_TELEGRAM_BOT_USERNAME = "wc26viral_bot";
+  const DEFAULT_TELEGRAM_APP_SHORT_NAME = "wc26airdrop";
+
   export let onNavigate: (page: AppPage) => void = () => {};
 
   let flashMessage = "";
@@ -28,6 +31,9 @@
   $: taskTotal = $earnStore.tasks.length;
   $: progressPct = taskTotal > 0 ? Math.round((taskDoneCount / taskTotal) * 100) : 0;
   $: earnRingOffset = 220 * (1 - Math.min(100, progressPct) / 100);
+  $: inviteLink = buildInviteLink(sessionId);
+  $: inviteLinkDisplay = inviteLink ?? "Generating invite link...";
+  $: copyInviteDisabled = !inviteLink;
 
   $: groupedTasks = $earnStore.categories
     .map((category) => ({
@@ -66,6 +72,53 @@
 
   function canOpenTaskChannel(task: EarnTask): boolean {
     return Boolean(task.isActive !== false && task.channel?.isActive && task.channel.url);
+  }
+
+  function normalizeTelegramValue(value: unknown): string | null {
+    const text = String(value ?? "")
+      .trim()
+      .replace(/^@+/, "")
+      .replace(/[^a-zA-Z0-9_]/g, "");
+    return text.length > 0 ? text : null;
+  }
+
+  function buildInviteLink(currentSessionId: string | null): string | null {
+    const cleanSessionId = String(currentSessionId ?? "").trim();
+    if (!cleanSessionId) return null;
+
+    const botUsername =
+      normalizeTelegramValue(import.meta.env.VITE_TELEGRAM_BOT_USERNAME) ?? DEFAULT_TELEGRAM_BOT_USERNAME;
+    const appShortName =
+      normalizeTelegramValue(import.meta.env.VITE_TELEGRAM_APP_SHORT_NAME) ?? DEFAULT_TELEGRAM_APP_SHORT_NAME;
+
+    return `https://t.me/${botUsername}/${appShortName}?startapp=${encodeURIComponent(cleanSessionId)}`;
+  }
+
+  async function copyInviteLink(): Promise<void> {
+    if (!inviteLink) {
+      showFlash("Invite link is not ready yet.");
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(inviteLink);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = inviteLink;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.left = "-9999px";
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(input);
+        if (!copied) throw new Error("copy_failed");
+      }
+      showFlash("✅ Invite link copied.");
+    } catch {
+      showFlash("❌ Unable to copy invite link.");
+    }
   }
 
   function openTaskChannel(task: EarnTask): void {
@@ -149,6 +202,13 @@
   <div class="ref-box" id="earn-ref-box">
     <div class="ref-title">👥 Referral Box</div>
     <div class="ref-sub">Invite friends. Each verified F1 unlocks +1 spin, +250 KICK and counts for Referral Champion Pool.</div>
+    <div class="ref-invite-wrap">
+      <div class="ref-invite-label">Your Invite Link</div>
+      <div class="ref-invite-link" title={inviteLinkDisplay}>{inviteLinkDisplay}</div>
+      <button class="btn b-y ref-copy-btn" type="button" on:click={copyInviteLink} disabled={copyInviteDisabled}>
+        COPY INVITE LINK
+      </button>
+    </div>
     <div class="ref-stats">
       <div class="rs"><div class="rv">{$earnStore.referral.boostMult}x</div><div class="rl">Referral Boost</div></div>
       <div class="rs"><div class="rv">{$sessionStore.spin.left}</div><div class="rl">Spin Left</div></div>

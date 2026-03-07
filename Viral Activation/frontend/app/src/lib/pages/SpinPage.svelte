@@ -511,7 +511,6 @@
             on:click={rollNow}
             disabled={disableRoll}
           />
-          <div class="spin-ball-label">TAP TO SPIN</div>
         </div>
       </div>
     </div>
