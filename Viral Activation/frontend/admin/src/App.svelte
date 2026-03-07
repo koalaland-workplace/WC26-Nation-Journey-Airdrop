@@ -4093,13 +4093,13 @@
               <div class="mb-tier" style="text-align:left">
                 <div class="mb-tier-name" style="font-size:18px;margin:0">Mini Games Conversion Pool - {wc26TokenConfig.pools.miniGamesConversionPool.toLocaleString()} WC26</div>
                 <div class="mb-tier-policy" style="max-width:none;margin-top:6px">
-                  Số Users đủ điều kiện chuyển đổi: <b>{wc26TokenEligibleUsers.toLocaleString()}</b>
+                  Eligible users for conversion: <b>{wc26TokenEligibleUsers.toLocaleString()}</b>
                 </div>
                 <div class="mb-tier-policy" style="max-width:none">
-                  Tổng số KICK được tính để chuyển đổi: <b>{wc26TokenTotalKickCounted.toLocaleString()}</b>
+                  Total KICK counted for conversion: <b>{wc26TokenTotalKickCounted.toLocaleString()}</b>
                 </div>
                 <div class="mb-tier-policy" style="max-width:none">
-                  Tạm tính: 1 WC26 = <b>{wc26TokenKickPerWc26.toLocaleString("en-US", { maximumFractionDigits: 4 })}</b> KICK
+                  Estimated rate: 1 WC26 = <b>{wc26TokenKickPerWc26.toLocaleString("en-US", { maximumFractionDigits: 4 })}</b> KICK
                 </div>
               </div>
             </div>

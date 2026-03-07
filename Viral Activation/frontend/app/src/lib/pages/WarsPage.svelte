@@ -2,16 +2,11 @@
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
   import { NATION_STATS } from "../modules/wars/data";
-  import {
-    computeWarPoints,
-    formatKickCompact,
-    formatWarPoint,
-    getStoredNationCode,
-    setStoredNationCode
-  } from "../modules/wars/utils";
+  import { computeWarPoints, formatKickCompact, formatWarPoint } from "../modules/wars/utils";
+  import { applyNationSelection, fetchNationState, fetchPvpOpponents } from "../modules/wars/api";
   import { penaltyStore } from "../stores/penalty.store";
   import { sessionStore } from "../stores/session.store";
-  import type { PenaltyActor } from "../modules/penalty/types";
+  import type { PenaltyActor, PenaltyOpponent } from "../modules/penalty/types";
   import type { AppPage } from "../stores/ui.store";
 
   export let onNavigate: (page: AppPage) => void = () => {};
@@ -23,19 +18,26 @@
     nationCode: string;
     flag: string;
     waitMin: number;
+    isAi: boolean;
+    aiWinRate: number;
   }
 
-  const QUEUE_KEY = "wc26_pvp_queue_v1";
-  const MY_QUEUE_ID = "me";
   const rankings = computeWarPoints();
   const maxPoint = rankings[0]?.warPoint ?? 1;
 
-  let selectedNationCode = getStoredNationCode();
-  let lockMessage = "Nation lock: switching nation is allowed once every 7 days (mock rule in app).";
+  let selectedNationCode = rankings[0]?.code ?? "BR";
+  let currentNationCode = selectedNationCode;
+  let lockMessage = "Nation lock: switch nation only after 7 days.";
+  let nationCanChange = true;
+  let isApplyingNation = false;
 
   let queuePlayers: QueuePlayer[] = [];
   let selectedQueueId = "";
-  let isQueued = false;
+  let queueSource: "realtime" | "ai_fallback" = "ai_fallback";
+  let isQueueLoading = false;
+  let queueErrorMessage = "";
+  let lastNationSessionId = "";
+  let lastQueueSessionId = "";
 
   let canvasEl: HTMLCanvasElement | null = null;
   let goalPhoto: HTMLImageElement | null = null;
@@ -55,6 +57,14 @@
   $: if (sessionId && $penaltyStore.status === "idle") {
     void penaltyStore.refresh(sessionId);
   }
+  $: if (sessionId && sessionId !== lastNationSessionId) {
+    lastNationSessionId = sessionId;
+    void loadNation();
+  }
+  $: if (sessionId && sessionId !== lastQueueSessionId) {
+    lastQueueSessionId = sessionId;
+    void refreshQueue();
+  }
 
   $: myNation = rankings.find((nation) => nation.code === selectedNationCode) ?? rankings[0];
   $: myRank = Math.max(1, rankings.findIndex((nation) => nation.code === selectedNationCode) + 1);
@@ -65,94 +75,94 @@
   $: isArena = $penaltyStore.stage === "arena" && Boolean(match);
   $: isPvp = match?.mode === "pvp";
 
-  function storage(): Storage | null {
-    if (typeof window === "undefined") return null;
-    return window.localStorage;
+  function resolveNationFlag(code: string): string {
+    const normalized = code.trim().toUpperCase();
+    return NATION_STATS.find((nation) => nation.code === normalized)?.flag ?? "🏳️";
   }
 
-  function loadQueue(): void {
-    const db = storage();
-    if (!db) return;
+  function toQueuePlayer(opponent: PenaltyOpponent): QueuePlayer {
+    return {
+      id: opponent.id,
+      name: opponent.name,
+      nationCode: opponent.nationCode,
+      flag: opponent.flag || resolveNationFlag(opponent.nationCode),
+      waitMin: Math.max(0, Math.floor(Number(opponent.waitMin) || 0)),
+      isAi: Boolean(opponent.isAi),
+      aiWinRate: Math.max(0, Math.min(1, Number(opponent.aiWinRate ?? 0)))
+    };
+  }
 
-    const raw = db.getItem(QUEUE_KEY);
-    if (!raw) {
-      seedQueue();
+  function updateNationLockMessage(canChange: boolean, remainingDays: number): void {
+    if (canChange) {
+      lockMessage = "Nation lock: switch nation only after 7 days.";
       return;
     }
+    const safeDays = Math.max(1, Math.ceil(Number(remainingDays) || 0));
+    lockMessage = `Nation is locked. You can switch again in ${safeDays} day(s).`;
+  }
 
+  async function loadNation(): Promise<void> {
+    if (!sessionId) return;
     try {
-      const parsed = JSON.parse(raw) as QueuePlayer[];
-      if (!Array.isArray(parsed)) {
-        seedQueue();
-        return;
-      }
-
-      queuePlayers = parsed.filter((item) => item && item.id !== MY_QUEUE_ID);
-      const me = parsed.find((item) => item && item.id === MY_QUEUE_ID);
-      isQueued = Boolean(me);
-      selectedQueueId = queuePlayers[0]?.id ?? "";
-    } catch {
-      seedQueue();
+      const payload = await fetchNationState(sessionId);
+      selectedNationCode = payload.nation.code;
+      currentNationCode = payload.nation.code;
+      nationCanChange = payload.nation.canChange;
+      updateNationLockMessage(payload.nation.canChange, payload.nation.remainingDays);
+    } catch (error) {
+      nationCanChange = true;
+      lockMessage =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : "Failed to load nation state.";
     }
   }
 
-  function saveQueue(): void {
-    const db = storage();
-    if (!db) return;
+  async function refreshQueue(): Promise<void> {
+    if (!sessionId) return;
+    isQueueLoading = true;
+    queueErrorMessage = "";
+    try {
+      const payload = await fetchPvpOpponents(sessionId);
+      queueSource = payload.source;
+      queuePlayers = payload.opponents.map(toQueuePlayer);
+      selectedQueueId =
+        queuePlayers.find((player) => player.id === selectedQueueId)?.id ?? queuePlayers[0]?.id ?? "";
+    } catch (error) {
+      queueErrorMessage =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : "Failed to load PvP opponent list.";
+      queuePlayers = [];
+      selectedQueueId = "";
+    } finally {
+      isQueueLoading = false;
+    }
+  }
 
-    const payload: QueuePlayer[] = [...queuePlayers];
-    if (isQueued) {
-      payload.unshift({
-        id: MY_QUEUE_ID,
-        name: "You",
-        nationCode: selectedNationCode,
-        flag: myNation.flag,
-        waitMin: 0
+  async function applyNation(): Promise<void> {
+    if (!sessionId || isApplyingNation) return;
+    isApplyingNation = true;
+    try {
+      const payload = await applyNationSelection({
+        sessionId,
+        nationCode: selectedNationCode
       });
-    }
-
-    db.setItem(QUEUE_KEY, JSON.stringify(payload));
-  }
-
-  function seedQueue(): void {
-    const seeded = rankings.slice(0, 5).map((nation, index) => ({
-      id: `queue-${nation.code.toLowerCase()}`,
-      name: `${nation.name} Fan #${100 + index}`,
-      nationCode: nation.code,
-      flag: nation.flag,
-      waitMin: 2 + index * 2
-    }));
-
-    queuePlayers = seeded;
-    selectedQueueId = queuePlayers[0]?.id ?? "";
-    isQueued = false;
-    saveQueue();
-  }
-
-  function refreshQueue(): void {
-    queuePlayers = queuePlayers
-      .map((player) => ({ ...player, waitMin: Math.max(0, player.waitMin + (Math.random() < 0.45 ? 1 : -1)) }))
-      .sort((a, b) => a.waitMin - b.waitMin);
-
-    if (queuePlayers.length === 0) {
-      seedQueue();
-    }
-
-    selectedQueueId = queuePlayers.find((player) => player.id === selectedQueueId)?.id ?? queuePlayers[0]?.id ?? "";
-    saveQueue();
-  }
-
-  function toggleStandby(): void {
-    isQueued = !isQueued;
-    saveQueue();
-  }
-
-  function applyNation(): void {
-    setStoredNationCode(selectedNationCode);
-    lockMessage = `Nation switched to ${selectedNationCode}. You can switch again after 7 days.`;
-
-    if (isQueued) {
-      saveQueue();
+      selectedNationCode = payload.nation.code;
+      currentNationCode = payload.nation.code;
+      nationCanChange = payload.nation.canChange;
+      updateNationLockMessage(payload.nation.canChange, payload.nation.remainingDays);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim().length > 0 ? error.message : "Failed to apply nation.";
+      if (message === "nation_locked") {
+        nationCanChange = false;
+        await loadNation();
+      } else {
+        lockMessage = message;
+      }
+    } finally {
+      isApplyingNation = false;
     }
   }
 
@@ -164,7 +174,7 @@
   async function startPvp(): Promise<void> {
     if (!sessionId) return;
     if (!selectedQueueId && queuePlayers.length === 0) return;
-    await penaltyStore.start(sessionId, "pvp");
+    await penaltyStore.start(sessionId, "pvp", selectedQueueId || undefined);
   }
 
   async function shoot(onTarget: boolean): Promise<void> {
@@ -1538,7 +1548,6 @@
   }
 
   onMount(() => {
-    loadQueue();
     const img = new Image();
     img.src = GOAL_BG_ASSET;
     img.onload = () => {
@@ -1651,7 +1660,14 @@
           <option value={nation.code}>{nation.flag} {nation.name}</option>
         {/each}
       </select>
-      <button class="btn b-y" type="button" on:click={applyNation}>Apply Nation</button>
+      <button
+        class="btn b-y"
+        type="button"
+        on:click={applyNation}
+        disabled={isApplyingNation || !sessionId || (!nationCanChange && selectedNationCode !== currentNationCode)}
+      >
+        {isApplyingNation ? "APPLYING..." : "Apply Nation"}
+      </button>
     </div>
     <div style="margin-top:5px;font-size:9.3px;color:var(--gr)">{lockMessage}</div>
 
@@ -1692,21 +1708,37 @@
           <div class="pen-standby-head">
             <div>
               <div class="pen-standby-title">👥 PvP Standby List</div>
-              <div class="pen-standby-sub">Select waiting player or register yourself to queue.</div>
+              <div class="pen-standby-sub">Select opponent. If no real players are online, AI rivals will appear.</div>
             </div>
-            <div class={`pill ${isQueued ? "p-g" : "p-y"}`}>{isQueued ? "Queued" : "Not queued"}</div>
+            <div class={`pill ${queueSource === "realtime" ? "p-g" : "p-y"}`}>
+              {queueSource === "realtime" ? "Live players" : "AI fallback"}
+            </div>
           </div>
 
-          <select bind:value={selectedQueueId} class="pen-standby-select">
-            {#each queuePlayers as player}
-              <option value={player.id}>{player.flag} {player.name} · waiting {player.waitMin}m</option>
-            {/each}
-          </select>
+          {#if queuePlayers.length > 0}
+            <select bind:value={selectedQueueId} class="pen-standby-select" disabled={isQueueLoading}>
+              {#each queuePlayers as player}
+                <option value={player.id}>
+                  {player.flag} {player.name}
+                  {#if player.isAi}
+                    {" · AI"}
+                  {/if}
+                  {" · waiting "}{player.waitMin}m
+                </option>
+              {/each}
+            </select>
+          {:else}
+            <div class="pen-standby-empty">{isQueueLoading ? "Loading opponents..." : "No opponents available right now."}</div>
+          {/if}
 
           <div class="pen-standby-actions">
-            <button class="btn b-gh" type="button" on:click={toggleStandby}>{isQueued ? "LEAVE QUEUE" : "+ REGISTER STANDBY"}</button>
-            <button class="btn b-gh" type="button" on:click={refreshQueue}>↻ REFRESH LIST</button>
+            <button class="btn b-gh" type="button" on:click={refreshQueue} disabled={!sessionId || isQueueLoading}>
+              {isQueueLoading ? "LOADING..." : "↻ REFRESH LIST"}
+            </button>
           </div>
+          {#if queueErrorMessage}
+            <div class="pen-standby-error">{queueErrorMessage}</div>
+          {/if}
         </div>
       </div>
 
@@ -1735,9 +1767,11 @@
         </div>
 
         <div class="pen-pi" style="flex-direction:row-reverse;text-align:right">
-          <span class="pen-pflag">{match.mode === "pvp" ? "🧍" : "🤖"}</span>
+          <span class="pen-pflag">{match.mode === "pvp" ? (match.opponent?.flag || (match.opponent?.isAi ? "🤖" : "🧍")) : "🤖"}</span>
           <div>
-            <div class="pen-pname">{match.mode === "pvp" ? "OPPONENT" : "AI"}</div>
+            <div class="pen-pname">
+              {match.mode === "pvp" ? (match.opponent?.name || "OPPONENT") : "AI"}
+            </div>
             <div class="pen-kicks pen-kicks-opp">
               {#each oppDotSlots as dot}
                 <span class={`psk ${dot}`}>{dot === "goal" ? "✓" : dot === "miss" ? "✕" : ""}</span>

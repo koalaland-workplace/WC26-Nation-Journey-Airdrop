@@ -17,6 +17,12 @@ export interface QuizAnswerState {
   answeredAt: number;
 }
 
+export interface AppNationState {
+  code: string;
+  lastChangedAt: number;
+  lockedUntil: number;
+}
+
 export interface PenaltyMatchState {
   id: string;
   mode: "solo" | "pvp";
@@ -33,6 +39,12 @@ export interface PenaltyMatchState {
   soloShotRate: number;
   done: boolean;
   createdAt: number;
+  opponentId: string;
+  opponentName: string;
+  opponentNationCode: string;
+  opponentIsAi: boolean;
+  opponentAiWinRate: number;
+  opponentShouldWin: boolean;
 }
 
 export interface AppGameState {
@@ -42,6 +54,7 @@ export interface AppGameState {
     day: string;
     dailyEarned: number;
   };
+  nation: AppNationState;
   quiz: {
     day: string;
     questions: QuizQuestionState[];
@@ -95,6 +108,13 @@ export interface SessionView {
   dayKey: string;
   kick: number;
   dailyEarned: number;
+  nation: {
+    code: string;
+    lastChangedAt: number;
+    lockedUntil: number;
+    canChange: boolean;
+    lockRemainingSeconds: number;
+  };
   quizBoostDay: string;
   quizBoostMult: number;
   refBoostDay: string;
@@ -134,6 +154,23 @@ function asBoundedInt(value: unknown, min: number, max: number, fallback: number
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as Record<string, unknown>;
+}
+
+function normalizeNationCode(value: unknown, fallback = "VN"): string {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  if (/^[A-Z]{2,3}$/.test(normalized)) return normalized;
+  return fallback;
+}
+
+function normalizeNationState(raw: unknown, fallbackCode = "VN"): AppNationState {
+  const source = asRecord(raw);
+  return {
+    code: normalizeNationCode(source.code, normalizeNationCode(fallbackCode, "VN")),
+    lastChangedAt: Math.max(0, asFiniteInt(source.lastChangedAt, 0)),
+    lockedUntil: Math.max(0, asFiniteInt(source.lockedUntil, 0))
+  };
 }
 
 export function dayKey(date = new Date()): string {
@@ -202,7 +239,7 @@ function buildQuizDailySet(sessionId: string, today: string): QuizQuestionState[
   }));
 }
 
-export function createDefaultState(sessionId: string, kick = 0): AppGameState {
+export function createDefaultState(sessionId: string, kick = 0, nationCode = "VN"): AppGameState {
   const today = dayKey();
   return {
     sessionId,
@@ -210,6 +247,11 @@ export function createDefaultState(sessionId: string, kick = 0): AppGameState {
     economy: {
       day: today,
       dailyEarned: 0
+    },
+    nation: {
+      code: normalizeNationCode(nationCode, "VN"),
+      lastChangedAt: 0,
+      lockedUntil: 0
     },
     quiz: {
       day: "",
@@ -254,9 +296,11 @@ function normalizePenaltyMatch(raw: unknown): PenaltyMatchState | null {
   const value = asRecord(raw);
   const id = String(value.id ?? "").trim();
   if (!id) return null;
+  const mode = value.mode === "pvp" ? "pvp" : "solo";
+  const opponentIsAi = Boolean(value.opponentIsAi);
   return {
     id,
-    mode: value.mode === "pvp" ? "pvp" : "solo",
+    mode,
     regShots: asBoundedInt(value.regShots, 1, 10, 5),
     sdShots: asBoundedInt(value.sdShots, 1, 10, 5),
     suddenActive: Boolean(value.suddenActive),
@@ -269,7 +313,13 @@ function normalizePenaltyMatch(raw: unknown): PenaltyMatchState | null {
     oppScore: asBoundedInt(value.oppScore, 0, 100, 0),
     soloShotRate: Math.max(0.05, Math.min(0.95, Number(value.soloShotRate ?? 0.75))),
     done: Boolean(value.done),
-    createdAt: asFiniteInt(value.createdAt, Date.now())
+    createdAt: asFiniteInt(value.createdAt, Date.now()),
+    opponentId: String(value.opponentId ?? (mode === "pvp" ? "ai:default" : "solo:keeper")),
+    opponentName: String(value.opponentName ?? (mode === "pvp" ? "Simulated Rival" : "Keeper")),
+    opponentNationCode: normalizeNationCode(value.opponentNationCode, "VN"),
+    opponentIsAi,
+    opponentAiWinRate: Math.max(0, Math.min(1, Number(value.opponentAiWinRate ?? 0.95))),
+    opponentShouldWin: opponentIsAi ? Boolean(value.opponentShouldWin ?? true) : false
   };
 }
 
@@ -307,11 +357,18 @@ function normalizeAnswers(raw: unknown): Record<string, QuizAnswerState> {
   return out;
 }
 
-export function mergePersistedState(raw: unknown, sessionId: string, userKick: number): AppGameState {
-  const base = createDefaultState(sessionId, userKick);
+export function mergePersistedState(
+  raw: unknown,
+  sessionId: string,
+  userKick: number,
+  userNationCode = "VN"
+): AppGameState {
+  const normalizedUserNation = normalizeNationCode(userNationCode, "VN");
+  const base = createDefaultState(sessionId, userKick, normalizedUserNation);
   const state = asRecord(raw);
   const today = dayKey();
 
+  const nation = asRecord(state.nation);
   const quiz = asRecord(state.quiz);
   const spin = asRecord(state.spin);
   const referral = asRecord(state.referral);
@@ -331,6 +388,7 @@ export function mergePersistedState(raw: unknown, sessionId: string, userKick: n
       day: String(asRecord(state.economy).day ?? today),
       dailyEarned: Math.max(0, asFiniteInt(asRecord(state.economy).dailyEarned, 0))
     },
+    nation: normalizeNationState(nation, normalizedUserNation),
     quiz: {
       day: String(quiz.day ?? ""),
       questions: normalizeQuestions(quiz.questions),
@@ -572,11 +630,19 @@ export function quizClientQuestion(question: QuizQuestionState, index: number) {
 
 export function sessionView(state: AppGameState): SessionView {
   const today = dayKey();
+  const lockRemainingMs = Math.max(0, state.nation.lockedUntil - Date.now());
   return {
     sessionId: state.sessionId,
     dayKey: today,
     kick: state.kick,
     dailyEarned: state.economy.dailyEarned,
+    nation: {
+      code: normalizeNationCode(state.nation.code, "VN"),
+      lastChangedAt: Math.max(0, Number(state.nation.lastChangedAt || 0)),
+      lockedUntil: Math.max(0, Number(state.nation.lockedUntil || 0)),
+      canChange: lockRemainingMs <= 0,
+      lockRemainingSeconds: Math.ceil(lockRemainingMs / 1000)
+    },
     quizBoostDay: state.quiz.boostDay,
     quizBoostMult: state.quiz.boostDay === today ? state.quiz.boostMult : 1,
     refBoostDay: state.referral.boostDay,

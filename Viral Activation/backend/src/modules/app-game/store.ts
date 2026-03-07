@@ -27,6 +27,14 @@ function sanitizeSessionId(value: unknown): string | null {
   return sessionId;
 }
 
+function sanitizeNationCode(value: unknown, fallback = "VN"): string {
+  const nationCode = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  if (/^[A-Z]{2,3}$/.test(nationCode)) return nationCode;
+  return fallback;
+}
+
 function createGuestUsername(sessionId: string): string {
   return `guest_${sessionId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "wc26"}`;
 }
@@ -102,7 +110,7 @@ async function buildSessionFromRow(
   prisma: PrismaStoreClient,
   row: { sessionId: string; state: Prisma.JsonValue; user: AppUser }
 ): Promise<LoadedGameSession> {
-  const state = mergePersistedState(row.state, row.sessionId, row.user.kick);
+  const state = mergePersistedState(row.state, row.sessionId, row.user.kick, row.user.nationCode ?? "VN");
   await syncReferralCounters(prisma, row.user.id, state);
   return {
     user: row.user,
@@ -122,7 +130,7 @@ async function createFreshSession(
       nationCode: "VN"
     }
   });
-  const state = createDefaultState(sessionId, user.kick);
+  const state = createDefaultState(sessionId, user.kick, user.nationCode);
   await tx.appGameState.create({
     data: {
       userId: user.id,
@@ -164,7 +172,8 @@ export async function persistGameSessionWithClient(
     where: { id: session.user.id },
     data: {
       kick: Math.max(0, Math.floor(Number(session.state.kick) || 0)),
-      mysteryTickets: Math.max(0, Math.floor(Number(session.state.spin.tickets) || 0))
+      mysteryTickets: Math.max(0, Math.floor(Number(session.state.spin.tickets) || 0)),
+      nationCode: sanitizeNationCode(session.state.nation.code, session.user.nationCode ?? "VN")
     }
   });
 
@@ -202,6 +211,7 @@ export async function persistGameSession(
     await persistGameSessionWithClient(tx, session, ledger);
   });
   session.user.kick = session.state.kick;
+  session.user.nationCode = sanitizeNationCode(session.state.nation.code, session.user.nationCode ?? "VN");
 }
 
 export async function syncReferralCounters(

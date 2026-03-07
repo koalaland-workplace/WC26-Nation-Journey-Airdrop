@@ -11,3 +11,28 @@ export interface NationStat {
 export interface NationRankItem extends NationStat {
   warPoint: number;
 }
+
+export interface NationState {
+  code: string;
+  lastChangedAt: number;
+  lockedUntil: number;
+  canChange: boolean;
+  remainingSeconds: number;
+  remainingDays: number;
+}
+
+export interface NationStateResponse {
+  ok: boolean;
+  nation: NationState;
+}
+
+export interface NationApplyRequest {
+  sessionId: string;
+  nationCode: string;
+}
+
+export interface NationApplyResponse {
+  ok: boolean;
+  changed: boolean;
+  nation: NationState;
+}

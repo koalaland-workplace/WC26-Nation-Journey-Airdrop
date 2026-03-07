@@ -10,6 +10,7 @@ import type {
   PenaltyDailyState,
   PenaltyFinalizeResponse,
   PenaltyMode,
+  PenaltyOpponent,
   PenaltyShotState
 } from "../modules/penalty/types";
 import { sessionStore } from "./session.store";
@@ -20,6 +21,7 @@ export type PenaltyStage = "lobby" | "arena";
 export interface PenaltyMatchState {
   matchId: string;
   mode: PenaltyMode;
+  opponent: PenaltyOpponent | null;
   meFirst: boolean;
   suddenActive: boolean;
   meScore: number;
@@ -97,10 +99,17 @@ function expectedActorFromState(shot: PenaltyShotState, meFirst: boolean): Penal
   return shot.myIdx < shot.oppIdx ? "me" : "opp";
 }
 
-function matchFromShot(matchId: string, mode: PenaltyMode, meFirst: boolean, shot: PenaltyShotState): PenaltyMatchState {
+function matchFromShot(
+  matchId: string,
+  mode: PenaltyMode,
+  meFirst: boolean,
+  shot: PenaltyShotState,
+  fallbackOpponent?: PenaltyOpponent
+): PenaltyMatchState {
   return {
     matchId,
     mode,
+    opponent: shot.opponent ?? fallbackOpponent ?? null,
     meFirst,
     suddenActive: shot.suddenActive,
     meScore: shot.meScore,
@@ -141,7 +150,7 @@ function createPenaltyStore() {
     }
   }
 
-  async function start(sessionId: string, mode: PenaltyMode): Promise<void> {
+  async function start(sessionId: string, mode: PenaltyMode, opponentId?: string): Promise<void> {
     if (!sessionId) return;
 
     update((state) => ({
@@ -152,7 +161,7 @@ function createPenaltyStore() {
     }));
 
     try {
-      const payload = await startPenaltyMatch({ sessionId, mode });
+      const payload = await startPenaltyMatch({ sessionId, mode, opponentId });
       sessionStore.sync({ economy: payload.economy });
 
       const baseShot: PenaltyShotState = {
@@ -165,7 +174,8 @@ function createPenaltyStore() {
         myIdx: payload.match.myIdx,
         oppIdx: payload.match.oppIdx,
         mySeq: [],
-        oppSeq: []
+        oppSeq: [],
+        opponent: payload.match.opponent
       };
 
       update((state) => ({
@@ -173,7 +183,13 @@ function createPenaltyStore() {
         stage: "arena",
         isBusy: false,
         daily: payload.penalty,
-        match: matchFromShot(payload.match.matchId, mode, payload.match.meFirst, baseShot),
+        match: matchFromShot(
+          payload.match.matchId,
+          mode,
+          payload.match.meFirst,
+          baseShot,
+          payload.match.opponent
+        ),
         playMessage: payload.match.meFirst ? "Your turn to shoot." : "Opponent starts.",
         errorMessage: null,
         lastResult: null
@@ -255,11 +271,17 @@ function createPenaltyStore() {
         current.match.matchId,
         current.match.mode,
         current.match.meFirst,
-        payload.shot
+        payload.shot,
+        current.match.opponent ?? undefined
       );
 
       const shotLabel = payload.shot.scored ? "GOAL" : "MISS";
-      const by = actor === "me" ? "You" : "Opponent";
+      const by =
+        actor === "me"
+          ? "You"
+          : current.match.opponent?.isAi
+            ? "AI"
+            : current.match.opponent?.name || "Opponent";
 
       update((state) => ({
         ...state,

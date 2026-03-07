@@ -65,10 +65,16 @@ const spinRollSchema = z.object({
 });
 
 const VERIFIED_INVITE_KICK_BONUS = 250;
+const NATION_LOCK_MS = 7 * 24 * 60 * 60 * 1000;
+const PVP_AI_MIN_OPPONENTS = 3;
+const PVP_AI_MAX_OPPONENTS = 5;
+const PVP_AI_WIN_RATE = 0.95;
+const PVP_OPPONENT_RECENT_WINDOW_MS = 15 * 60 * 1000;
 
 const penaltyStartSchema = z.object({
   sessionId: sessionIdSchema,
-  mode: z.enum(["solo", "pvp"]).default("solo")
+  mode: z.enum(["solo", "pvp"]).default("solo"),
+  opponentId: z.string().trim().min(1).max(180).optional()
 });
 
 const penaltyShotSchema = z.object({
@@ -83,6 +89,15 @@ const penaltyShotSchema = z.object({
 const penaltyFinalizeSchema = z.object({
   sessionId: sessionIdSchema,
   matchId: z.string().trim().min(1)
+});
+
+const nationApplySchema = z.object({
+  sessionId: sessionIdSchema,
+  nationCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(3)
 });
 
 const quizAnswerSchema = z.object({
@@ -343,6 +358,200 @@ function validateMissionProof(
   return { ok: true };
 }
 
+interface PenaltyRuntimeConfig {
+  soloFreePerDay: number;
+  soloExtraCost: number;
+  soloWin: number;
+  pvpWin: number;
+  pvpLose: number;
+  pvpBurn: number;
+}
+
+interface PvpOpponentCandidate {
+  id: string;
+  name: string;
+  nationCode: string;
+  flag: string;
+  waitMin: number;
+  isAi: boolean;
+  aiWinRate: number;
+}
+
+const AI_OPPONENT_NAMES = [
+  "Shadow Striker",
+  "Ice Keeper",
+  "Turbo Finisher",
+  "Night Falcon",
+  "Goal Phantom",
+  "Red Comet",
+  "Storm Hunter"
+];
+
+const AI_OPPONENT_NATIONS = ["BR", "AR", "FR", "ES", "PT", "DE", "MX", "US", "VN", "EN"];
+
+function toSafeInt(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.floor(parsed);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function normalizeNationCode(value: unknown, fallback = "VN"): string {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  if (/^[A-Z]{2,3}$/.test(normalized)) return normalized;
+  return fallback;
+}
+
+function countryCodeToFlagEmoji(code: string): string {
+  const normalized = normalizeNationCode(code, "VN");
+  if (normalized === "EN") return "🏴";
+  if (normalized.length !== 2) return "🏳️";
+  const points = [...normalized].map((char) => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...points);
+}
+
+function randomInt(min: number, max: number): number {
+  if (max <= min) return min;
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function buildPenaltyDailyView(
+  session: { penalty: { day: string; soloPlays: number } },
+  config: PenaltyRuntimeConfig
+) {
+  return {
+    day: session.penalty.day,
+    soloPlays: session.penalty.soloPlays,
+    soloFreeLeft: Math.max(0, config.soloFreePerDay - session.penalty.soloPlays),
+    soloShotRateNow: getSoloShotRate(session.penalty.soloPlays),
+    config
+  };
+}
+
+function buildNationView(nation: { code: string; lockedUntil: number; lastChangedAt: number }) {
+  const now = Date.now();
+  const lockedUntil = Math.max(0, Number(nation.lockedUntil || 0));
+  const remainingMs = Math.max(0, lockedUntil - now);
+  return {
+    code: normalizeNationCode(nation.code, "VN"),
+    lastChangedAt: Math.max(0, Number(nation.lastChangedAt || 0)),
+    lockedUntil,
+    canChange: remainingMs <= 0,
+    remainingSeconds: Math.ceil(remainingMs / 1000),
+    remainingDays: Math.ceil(remainingMs / 86400000)
+  };
+}
+
+async function loadPenaltyConfig(app: Parameters<FastifyPluginAsync>[0]): Promise<PenaltyRuntimeConfig> {
+  const defaults: PenaltyRuntimeConfig = {
+    soloFreePerDay: 3,
+    soloExtraCost: 500,
+    soloWin: 2000,
+    pvpWin: 2000,
+    pvpLose: -2500,
+    pvpBurn: 500
+  };
+
+  const row = await app.prisma.featureConfig.findUnique({ where: { key: "penalty" } });
+  const value = asRecord(row?.value);
+  return {
+    soloFreePerDay: Math.max(0, toSafeInt(value.soloFreePerDay, defaults.soloFreePerDay)),
+    soloExtraCost: Math.max(0, toSafeInt(value.soloExtraCost, defaults.soloExtraCost)),
+    soloWin: toSafeInt(value.soloWin, defaults.soloWin),
+    pvpWin: toSafeInt(value.pvpWin, defaults.pvpWin),
+    pvpLose: toSafeInt(value.pvpLose, defaults.pvpLose),
+    pvpBurn: Math.max(0, toSafeInt(value.pvpBurn, defaults.pvpBurn))
+  };
+}
+
+function buildAiOpponents(count: number): PvpOpponentCandidate[] {
+  return Array.from({ length: count }).map((_, index) => {
+    const name = AI_OPPONENT_NAMES[index % AI_OPPONENT_NAMES.length];
+    const nationCode = AI_OPPONENT_NATIONS[(index + randomInt(0, AI_OPPONENT_NATIONS.length - 1)) % AI_OPPONENT_NATIONS.length];
+    return {
+      id: `ai:${index + 1}:${nationCode.toLowerCase()}`,
+      name,
+      nationCode,
+      flag: countryCodeToFlagEmoji(nationCode),
+      waitMin: randomInt(0, 4),
+      isAi: true,
+      aiWinRate: PVP_AI_WIN_RATE
+    };
+  });
+}
+
+async function listPvpOpponents(
+  app: Parameters<FastifyPluginAsync>[0],
+  sessionId: string
+): Promise<{ items: PvpOpponentCandidate[]; hasRealPlayers: boolean }> {
+  const cutoff = new Date(Date.now() - PVP_OPPONENT_RECENT_WINDOW_MS);
+  const rows = await app.prisma.appGameState.findMany({
+    where: {
+      sessionId: { not: sessionId },
+      updatedAt: { gte: cutoff }
+    },
+    include: {
+      user: {
+        select: {
+          username: true,
+          nationCode: true
+        }
+      }
+    },
+    orderBy: {
+      updatedAt: "desc"
+    },
+    take: 12
+  });
+
+  const realItems = rows.map((row, index) => {
+    const nationCode = normalizeNationCode(row.user.nationCode, "VN");
+    const waitMs = Math.max(0, Date.now() - row.updatedAt.getTime());
+    return {
+      id: `user:${row.sessionId}`,
+      name: String(row.user.username ?? `Rival #${index + 1}`),
+      nationCode,
+      flag: countryCodeToFlagEmoji(nationCode),
+      waitMin: Math.min(9, Math.floor(waitMs / 60000)),
+      isAi: false,
+      aiWinRate: 0
+    } satisfies PvpOpponentCandidate;
+  });
+
+  if (realItems.length > 0) {
+    return {
+      items: realItems.slice(0, 5),
+      hasRealPlayers: true
+    };
+  }
+
+  return {
+    items: buildAiOpponents(randomInt(PVP_AI_MIN_OPPONENTS, PVP_AI_MAX_OPPONENTS)),
+    hasRealPlayers: false
+  };
+}
+
+async function resolvePvpOpponent(
+  app: Parameters<FastifyPluginAsync>[0],
+  sessionId: string,
+  requestedOpponentId?: string
+): Promise<PvpOpponentCandidate> {
+  const opponents = await listPvpOpponents(app, sessionId);
+  const selected =
+    (requestedOpponentId ? opponents.items.find((item) => item.id === requestedOpponentId) : null) ??
+    opponents.items[0];
+
+  if (selected) return selected;
+
+  return buildAiOpponents(1)[0];
+}
+
 export const appGameRoutes: FastifyPluginAsync = async (app) => {
   app.get("/health", async () => ({ ok: true, service: "wc26-app-game" }));
 
@@ -369,6 +578,59 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     return {
       ok: true,
       state: sessionView(session.state)
+    };
+  });
+
+  app.get("/api/nation/state", async (request, reply) => {
+    const query = querySessionSchema.safeParse(request.query);
+    if (!query.success) {
+      return reply.status(400).send({ ok: false, error: "invalid_session" });
+    }
+
+    const session = await getOrCreateGameSession(app.prisma, query.data.sessionId);
+    ensureToday(session.state);
+    await persistGameSession(app.prisma, session);
+
+    return {
+      ok: true,
+      nation: buildNationView(session.state.nation)
+    };
+  });
+
+  app.post("/api/nation/apply", async (request, reply) => {
+    const body = nationApplySchema.parse(request.body ?? {});
+    const session = await getOrCreateGameSession(app.prisma, body.sessionId);
+    ensureToday(session.state);
+
+    const nextCode = normalizeNationCode(body.nationCode, session.state.nation.code);
+    const current = buildNationView(session.state.nation);
+
+    if (current.code === nextCode) {
+      return {
+        ok: true,
+        changed: false,
+        nation: current
+      };
+    }
+
+    if (!current.canChange) {
+      return reply.status(409).send({
+        ok: false,
+        error: "nation_locked",
+        nation: current
+      });
+    }
+
+    const now = Date.now();
+    session.state.nation.code = nextCode;
+    session.state.nation.lastChangedAt = now;
+    session.state.nation.lockedUntil = now + NATION_LOCK_MS;
+    await persistGameSession(app.prisma, session);
+
+    return {
+      ok: true,
+      changed: true,
+      nation: buildNationView(session.state.nation)
     };
   });
 
@@ -1024,12 +1286,31 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     }
     const session = await getOrCreateGameSession(app.prisma, query.data.sessionId);
     ensureToday(session.state);
+    const penaltyConfig = await loadPenaltyConfig(app);
     await persistGameSession(app.prisma, session);
 
     return {
       ok: true,
-      penalty: sessionView(session.state).penalty,
+      penalty: buildPenaltyDailyView(session.state, penaltyConfig),
       economy: economyView(session.state.kick, session.state.economy.dailyEarned)
+    };
+  });
+
+  app.get("/api/penalty/pvp/opponents", async (request, reply) => {
+    const query = querySessionSchema.safeParse(request.query);
+    if (!query.success) {
+      return reply.status(400).send({ ok: false, error: "invalid_session" });
+    }
+
+    const session = await getOrCreateGameSession(app.prisma, query.data.sessionId);
+    ensureToday(session.state);
+    await persistGameSession(app.prisma, session);
+
+    const list = await listPvpOpponents(app, session.state.sessionId);
+    return {
+      ok: true,
+      source: list.hasRealPlayers ? "realtime" : "ai_fallback",
+      opponents: list.items
     };
   });
 
@@ -1037,23 +1318,48 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     const body = penaltyStartSchema.parse(request.body ?? {});
     const session = await getOrCreateGameSession(app.prisma, body.sessionId);
     ensureToday(session.state);
+    const penaltyConfig = await loadPenaltyConfig(app);
 
     const mode = body.mode;
     let entryFeeApplied = 0;
+    let entryReason: string | null = null;
     const soloShotRateNow = getSoloShotRate(session.state.penalty.soloPlays);
+    const fallbackNation = normalizeNationCode(session.state.nation.code, session.user.nationCode ?? "VN");
+
+    const opponent =
+      mode === "pvp"
+        ? await resolvePvpOpponent(app, session.state.sessionId, body.opponentId)
+        : {
+            id: "solo:keeper",
+            name: "Keeper AI",
+            nationCode: fallbackNation,
+            flag: countryCodeToFlagEmoji(fallbackNation),
+            waitMin: 0,
+            isAi: true,
+            aiWinRate: 0
+          };
 
     if (mode === "solo") {
-      const freeLeft = Math.max(0, 3 - session.state.penalty.soloPlays);
+      const freeLeft = Math.max(0, penaltyConfig.soloFreePerDay - session.state.penalty.soloPlays);
       if (freeLeft <= 0) {
-        if (session.state.kick < 500) {
+        if (session.state.kick < penaltyConfig.soloExtraCost) {
           return reply.status(409).send({ ok: false, error: "insufficient_kick_for_solo_entry" });
         }
-        entryFeeApplied = applyKick(session.state, -500);
+        entryFeeApplied = applyKick(session.state, -penaltyConfig.soloExtraCost);
+        entryReason = "penalty:solo_entry";
       }
       session.state.penalty.soloPlays += 1;
+    } else if (penaltyConfig.pvpBurn > 0) {
+      if (session.state.kick < penaltyConfig.pvpBurn) {
+        return reply.status(409).send({ ok: false, error: "insufficient_kick_for_pvp_entry" });
+      }
+      entryFeeApplied = applyKick(session.state, -penaltyConfig.pvpBurn);
+      entryReason = "penalty:pvp_entry";
     }
 
     const matchId = randomUUID();
+    const opponentIsAi = mode === "pvp" && opponent.isAi;
+    const opponentAiWinRate = opponentIsAi ? PVP_AI_WIN_RATE : 0;
     const match: PenaltyMatchState = {
       id: matchId,
       mode,
@@ -1069,17 +1375,23 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
       oppScore: 0,
       soloShotRate: soloShotRateNow,
       done: false,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      opponentId: opponent.id,
+      opponentName: opponent.name,
+      opponentNationCode: opponent.nationCode,
+      opponentIsAi,
+      opponentAiWinRate,
+      opponentShouldWin: opponentIsAi ? Math.random() < opponentAiWinRate : false
     };
     session.state.penalty.matches[matchId] = match;
 
     await persistGameSession(
       app.prisma,
       session,
-      entryFeeApplied !== 0
+      entryFeeApplied !== 0 && entryReason
         ? {
             delta: entryFeeApplied,
-            reason: "penalty:solo_entry",
+            reason: entryReason,
             source: "penalty"
           }
         : undefined
@@ -1096,10 +1408,18 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
         oppScore: 0,
         myIdx: 0,
         oppIdx: 0,
-        soloShotRateNow
+        soloShotRateNow,
+        opponent: {
+          id: opponent.id,
+          name: opponent.name,
+          nationCode: opponent.nationCode,
+          flag: opponent.flag,
+          isAi: opponent.isAi,
+          aiWinRate: opponent.aiWinRate
+        }
       },
       entryFeeApplied,
-      penalty: sessionView(session.state).penalty,
+      penalty: buildPenaltyDailyView(session.state, penaltyConfig),
       economy: economyView(session.state.kick, session.state.economy.dailyEarned)
     };
   });
@@ -1143,7 +1463,12 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
 
     if (body.actor === "me") {
       if (match.mode === "solo") scored = onTarget && Math.random() < match.soloShotRate;
-      else scored = onTarget;
+      else if (match.opponentIsAi) {
+        const shotChance = match.opponentShouldWin ? 0.35 : 0.85;
+        scored = onTarget && Math.random() < shotChance;
+      } else {
+        scored = onTarget;
+      }
       match.mySeq.push(scored);
       match.myIdx += 1;
     } else {
@@ -1152,6 +1477,10 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
         if (auto) saveChance *= 0.6;
         const saved = Math.random() < saveChance;
         scored = !saved;
+      } else if (match.opponentIsAi) {
+        let scoreChance = match.opponentShouldWin ? 0.92 : 0.45;
+        if (!auto && keeperCovered) scoreChance *= 0.35;
+        scored = Math.random() < scoreChance;
       } else {
         const saved = !auto && keeperCovered;
         scored = !saved;
@@ -1175,7 +1504,15 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
         myIdx: match.myIdx,
         oppIdx: match.oppIdx,
         mySeq: match.mySeq,
-        oppSeq: match.oppSeq
+        oppSeq: match.oppSeq,
+        opponent: {
+          id: match.opponentId,
+          name: match.opponentName,
+          nationCode: match.opponentNationCode,
+          flag: countryCodeToFlagEmoji(match.opponentNationCode),
+          isAi: match.opponentIsAi,
+          aiWinRate: match.opponentAiWinRate
+        }
       }
     };
   });
@@ -1184,6 +1521,7 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     const body = penaltyFinalizeSchema.parse(request.body ?? {});
     const session = await getOrCreateGameSession(app.prisma, body.sessionId);
     ensureToday(session.state);
+    const penaltyConfig = await loadPenaltyConfig(app);
 
     const match = session.state.penalty.matches[body.matchId];
     if (!match) {
@@ -1195,9 +1533,22 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
     if (match.meScore > match.oppScore) result = "win";
     else if (match.meScore < match.oppScore) result = "loss";
 
+    if (match.mode === "pvp" && match.opponentIsAi) {
+      if (match.opponentShouldWin && result !== "loss") {
+        match.oppScore = Math.max(match.oppScore, match.meScore + 1);
+        result = "loss";
+      } else if (!match.opponentShouldWin && result !== "win") {
+        match.meScore = Math.max(match.meScore, match.oppScore + 1);
+        result = "win";
+      }
+    }
+
     let delta = 0;
-    if (result === "win") delta = 2000;
-    else if (result === "loss" && match.mode === "pvp") delta = -2500;
+    if (result === "win") {
+      delta = match.mode === "pvp" ? penaltyConfig.pvpWin : penaltyConfig.soloWin;
+    } else if (result === "loss" && match.mode === "pvp") {
+      delta = penaltyConfig.pvpLose;
+    }
     const deltaApplied = delta === 0 ? 0 : applyKick(session.state, delta);
     delete session.state.penalty.matches[body.matchId];
 
@@ -1220,9 +1571,17 @@ export const appGameRoutes: FastifyPluginAsync = async (app) => {
       final: {
         meScore: match.meScore,
         oppScore: match.oppScore,
-        mode: match.mode
+        mode: match.mode,
+        opponent: {
+          id: match.opponentId,
+          name: match.opponentName,
+          nationCode: match.opponentNationCode,
+          flag: countryCodeToFlagEmoji(match.opponentNationCode),
+          isAi: match.opponentIsAi,
+          aiWinRate: match.opponentAiWinRate
+        }
       },
-      penalty: sessionView(session.state).penalty,
+      penalty: buildPenaltyDailyView(session.state, penaltyConfig),
       economy: economyView(session.state.kick, session.state.economy.dailyEarned)
     };
   });
