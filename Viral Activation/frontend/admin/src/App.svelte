@@ -465,6 +465,7 @@
     const key = provider.trim().toLowerCase();
     if (key === "api-football") return "API-Football";
     if (key === "football-data") return "Football-Data";
+    if (key === "gnews") return "GNews";
     if (key === "thesportsdb") return "TheSportsDB";
     if (key === "openligadb") return "OpenLigaDB";
     if (key === "sportmonks") return "SportMonks";
@@ -499,6 +500,19 @@
       language: "en",
       timezone: "UTC",
       pollMinutes: "15",
+      timeoutMs: "12000"
+    },
+    gnews: {
+      provider: "gnews",
+      baseUrl: "https://gnews.io/api/v4",
+      keyHeader: "x-api-key",
+      newsPath:
+        "/search?q=%22World%20Cup%202026%22%20OR%20%22FIFA%20World%20Cup%202026%22%20OR%20%22national%20team%22%20football%20OR%20%22international%20football%22%20OR%20Mbappe%20OR%20Messi%20OR%20Bellingham%20OR%20Vinicius%20OR%20%22football%20transfer%22%20OR%20%22football%20injury%22&max=8&in=title,description",
+      fixturesPath: "/top-headlines?topic=sports&lang=en&max=5",
+      competitions: "FIFA-WC,WORLD-CUP-2026",
+      language: "en",
+      timezone: "UTC",
+      pollMinutes: "360",
       timeoutMs: "12000"
     },
     thesportsdb: {
@@ -4579,6 +4593,7 @@
                   <select id="football-provider" class="inp" bind:value={footballNewsApiForm.provider} on:change={() => applyFootballProviderPreset(footballNewsApiForm.provider)}>
                     <option value="api-football">API-Football</option>
                     <option value="football-data">Football-Data</option>
+                    <option value="gnews">GNews</option>
                     <option value="thesportsdb">TheSportsDB (free)</option>
                     <option value="openligadb">OpenLigaDB (free)</option>
                     <option value="sportmonks">SportMonks</option>

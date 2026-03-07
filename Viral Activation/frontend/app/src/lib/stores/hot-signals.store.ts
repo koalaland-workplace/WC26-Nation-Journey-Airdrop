@@ -1,6 +1,7 @@
 import { writable } from "svelte/store";
 import { fetchHotSignals } from "../modules/news/api";
 import { DEFAULT_HOT_SIGNALS, type HotSignal } from "../modules/news/types";
+import type { AppLanguageCode } from "../modules/i18n/types";
 
 export type HotSignalsStatus = "idle" | "loading" | "ready" | "error";
 
@@ -31,11 +32,12 @@ function createHotSignalsStore() {
   const { subscribe, set, update } = writable<HotSignalsState>(initialState);
   let lastFetchAtMs = 0;
   let isLoading = false;
+  let lastLanguage: AppLanguageCode | null = null;
 
-  async function refresh(limit = 5, force = false): Promise<void> {
+  async function refresh(limit = 5, force = false, language: AppLanguageCode = "en"): Promise<void> {
     if (isLoading) return;
     const now = Date.now();
-    if (!force && lastFetchAtMs > 0 && now - lastFetchAtMs < CACHE_TTL_MS) {
+    if (!force && lastLanguage === language && lastFetchAtMs > 0 && now - lastFetchAtMs < CACHE_TTL_MS) {
       return;
     }
 
@@ -43,8 +45,9 @@ function createHotSignalsStore() {
     update((state) => ({ ...state, status: "loading", errorMessage: null }));
 
     try {
-      const items = await fetchHotSignals({ limit });
+      const items = await fetchHotSignals({ limit, language });
       lastFetchAtMs = Date.now();
+      lastLanguage = language;
       update((state) => ({
         ...state,
         status: "ready",
@@ -67,10 +70,11 @@ function createHotSignalsStore() {
   return {
     subscribe,
     refresh,
-    reset: () => {
-      lastFetchAtMs = 0;
-      set(initialState);
-    }
+      reset: () => {
+        lastFetchAtMs = 0;
+        lastLanguage = null;
+        set(initialState);
+      }
   };
 }
 

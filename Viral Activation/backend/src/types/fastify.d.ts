@@ -14,6 +14,7 @@ declare module "fastify" {
       jwtAccessSecret: string;
       jwtRefreshSecret: string;
       telegramBotToken: string;
+      googleTranslateApiKey: string;
       requireTelegramSignature: boolean;
       cookieSecure: boolean;
       redisUrl: string | null;

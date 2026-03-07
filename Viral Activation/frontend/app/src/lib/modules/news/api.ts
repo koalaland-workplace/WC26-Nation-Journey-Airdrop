@@ -39,6 +39,7 @@ function normalizeItem(item: AppNewsItemResponse): HotSignal {
     title: item.title,
     summary,
     url: item.url,
+    imageUrl: item.imageUrl,
     sourceName: item.sourceName,
     publishedAt: item.publishedAt,
     impact: deriveImpact(`${item.title} ${summary}`)

@@ -26,6 +26,11 @@
           <span class="pulse-alert-icon" aria-hidden="true">🚨</span>
           <span>{item.title}</span>
         </div>
+        {#if item.imageUrl}
+          <div class="pulse-media-wrap">
+            <img class="pulse-media" src={item.imageUrl} alt={item.title} loading="lazy" />
+          </div>
+        {/if}
         {#if item.summary}
           <div class="pulse-hot-meta">{item.summary}</div>
         {/if}

@@ -8,6 +8,7 @@
   import { fetchReferralState } from "../modules/referral/api";
   import { resolveTierPolicyByKick, TIER_POLICY } from "../modules/tier/policy";
   import { hotSignalsStore } from "../stores/hot-signals.store";
+  import { languageStore } from "../stores/language.store";
   import { sessionStore } from "../stores/session.store";
   import { spinStore } from "../stores/spin.store";
   import { updatedLabel } from "../modules/news/utils";
@@ -135,6 +136,8 @@
         // Ignore transient announcement fetch errors on home page.
       }
     })();
+
+    void hotSignalsStore.refresh(5, true, $languageStore.current);
   });
 
   onDestroy(() => {
@@ -144,6 +147,7 @@
 
   $: hotSignals = $hotSignalsStore.items.slice(0, 5);
   $: homeHotUpdated = updatedLabel($hotSignalsStore.lastUpdatedAt);
+  $: void hotSignalsStore.refresh(5, false, $languageStore.current);
   $: spinLeft = $spinStore.spin.left;
   $: sessionId = $sessionStore.sessionId;
   $: totalKickEarned = Math.max(0, Math.floor(Number($sessionStore.kick) || 0));

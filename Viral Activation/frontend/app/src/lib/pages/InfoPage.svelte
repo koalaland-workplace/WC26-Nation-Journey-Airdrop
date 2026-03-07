@@ -79,7 +79,7 @@
       : MATCH_KNOCKOUT_ROUNDS;
 
   $: if (activeTab === "pulse") {
-    void hotSignalsStore.refresh(5);
+    void hotSignalsStore.refresh(5, false, $languageStore.current);
   }
 
   $: if (activeTab === "rules") {

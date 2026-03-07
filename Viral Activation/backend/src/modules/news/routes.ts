@@ -4,6 +4,24 @@ import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { writeAudit } from "../common/audit.js";
 
+const APP_HOT_SIGNAL_LANGUAGES = ["en", "es", "pt", "kr", "jp"] as const;
+type AppHotSignalLanguage = (typeof APP_HOT_SIGNAL_LANGUAGES)[number];
+
+const GNEWS_DEFAULT_SEARCH_QUERY = [
+  "\"World Cup 2026\"",
+  "\"FIFA World Cup 2026\"",
+  "\"national team\" football",
+  "\"international football\"",
+  "Mbappe",
+  "Messi",
+  "Bellingham",
+  "Vinicius",
+  "\"football transfer\"",
+  "\"football injury\""
+].join(" OR ");
+
+const GNEWS_DEFAULT_NEWS_PATH = `/search?q=${encodeURIComponent(GNEWS_DEFAULT_SEARCH_QUERY)}&max=8&in=title,description`;
+
 const footballNewsSchema = z.object({
   enabled: z.coerce.boolean().default(false),
   provider: z.string().min(1).default("api-football"),
@@ -175,6 +193,30 @@ const FREE_FOOTBALL_NEWS_PROFILES: FootballNewsProfileNode[] = [
         timeoutMs: 12000
       }
     })
+  },
+  {
+    id: "gnews-world-cup",
+    name: "GNews World Cup 2026",
+    ...footballNewsSchema.parse({
+      enabled: false,
+      provider: "gnews",
+      baseUrl: "https://gnews.io/api/v4",
+      apiKey: "",
+      keyHeader: "x-api-key",
+      endpoints: {
+        news: GNEWS_DEFAULT_NEWS_PATH,
+        fixtures: "/top-headlines?topic=sports&lang=en&max=5"
+      },
+      defaults: {
+        competitions: ["FIFA-WC", "WORLD-CUP-2026"],
+        language: "en",
+        timezone: "UTC"
+      },
+      polling: {
+        intervalMinutes: 360,
+        timeoutMs: 12000
+      }
+    })
   }
 ];
 
@@ -328,6 +370,69 @@ function extractArray(payload: unknown): Record<string, unknown>[] {
   return [];
 }
 
+function normalizeAppHotSignalLanguage(value: unknown): AppHotSignalLanguage {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "es" || normalized === "pt" || normalized === "kr" || normalized === "jp") return normalized;
+  return "en";
+}
+
+function toGoogleTargetLanguage(language: AppHotSignalLanguage): string {
+  if (language === "kr") return "ko";
+  if (language === "jp") return "ja";
+  return language;
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]+>/g, " ");
+}
+
+function compactSpaces(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function clampSummary(value: string, maxLength = 220): string {
+  const normalized = compactSpaces(stripHtml(value));
+  if (normalized.length <= maxLength) return normalized;
+  const shortened = normalized.slice(0, Math.max(0, maxLength - 1));
+  const lastBreak = Math.max(shortened.lastIndexOf(" "), shortened.lastIndexOf("."));
+  const base = lastBreak >= Math.floor(maxLength * 0.55) ? shortened.slice(0, lastBreak) : shortened;
+  return `${base.trim()}…`;
+}
+
+function buildHotSignalSummary(title: string, summary?: string | null, content?: string | null): string {
+  const cleanTitle = compactSpaces(title);
+  const cleanSummary = summary ? compactSpaces(stripHtml(summary)) : "";
+  const cleanContent = content ? compactSpaces(stripHtml(content)) : "";
+
+  if (cleanSummary) {
+    const withoutDuplicateTitle = cleanSummary
+      .replace(new RegExp(`^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[:\\-\\s]*`, "i"), "")
+      .trim();
+    if (withoutDuplicateTitle) return clampSummary(withoutDuplicateTitle, 190);
+    return clampSummary(cleanSummary, 190);
+  }
+
+  if (cleanContent) return clampSummary(cleanContent, 190);
+  return "Latest development from the World Cup 2026 signal desk.";
+}
+
+function inferCompetition(
+  raw: Record<string, unknown>,
+  config: FootballNewsConfig,
+  title: string,
+  summary: string | null
+): string | null {
+  const explicit = firstString(raw, ["competition", "competition.name", "league", "league.name"]);
+  if (explicit) return explicit;
+
+  const haystack = `${title} ${summary ?? ""}`.toLowerCase();
+  if (haystack.includes("world cup")) return "FIFA-WC";
+  if (haystack.includes("fifa")) return "FIFA";
+  return config.defaults.competitions[0] ?? null;
+}
+
 function normalizeNewsRecord(raw: Record<string, unknown>, config: FootballNewsConfig): NormalizedNewsItem | null {
   const title = firstString(raw, ["title", "headline", "name"]);
   if (!title) return null;
@@ -349,12 +454,13 @@ function normalizeNewsRecord(raw: Record<string, unknown>, config: FootballNewsC
       .update(`${config.provider}:${title}:${url ?? ""}:${publishedAt.toISOString()}`)
       .digest("hex");
 
-  const summary = firstString(raw, ["summary", "description", "snippet", "short_description"]);
+  const rawSummary = firstString(raw, ["summary", "description", "snippet", "short_description"]);
   const content = firstString(raw, ["content", "body", "text"]);
   const imageUrl = firstString(raw, ["image", "imageUrl", "urlToImage", "thumbnail"]);
   const sourceName = firstString(raw, ["source.name", "source", "provider", "publisher"]);
-  const language = firstString(raw, ["language", "lang"]) ?? config.defaults.language;
-  const competition = firstString(raw, ["competition", "competition.name", "league", "league.name"]);
+  const language = normalizeAppHotSignalLanguage(firstString(raw, ["language", "lang"]) ?? config.defaults.language);
+  const summary = buildHotSignalSummary(title, rawSummary, content);
+  const competition = inferCompetition(raw, config, title, summary);
 
   return {
     providerItemId,
@@ -491,7 +597,24 @@ async function loadFootballNewsConfig(app: FastifyInstance): Promise<FootballNew
 }
 
 function buildNewsUrl(config: FootballNewsConfig): URL {
-  const url = new URL(normalizePath(config.endpoints.news), config.baseUrl);
+  const rawPath = normalizePath(config.endpoints.news);
+  const url = rawPath.startsWith("http://") || rawPath.startsWith("https://")
+    ? new URL(rawPath)
+    : new URL(rawPath, config.baseUrl);
+
+  if (config.provider === "gnews") {
+    if (!url.searchParams.get("lang")) {
+      url.searchParams.set("lang", normalizeAppHotSignalLanguage(config.defaults.language));
+    }
+    if (!url.searchParams.get("max")) {
+      url.searchParams.set("max", "5");
+    }
+    if (config.apiKey.trim() && !url.searchParams.get("apikey")) {
+      url.searchParams.set("apikey", config.apiKey.trim());
+    }
+    return url;
+  }
+
   if (config.defaults.competitions.length > 0) {
     url.searchParams.set("competitions", config.defaults.competitions.join(","));
     if (config.defaults.competitions.length === 1) {
@@ -502,6 +625,16 @@ function buildNewsUrl(config: FootballNewsConfig): URL {
   url.searchParams.set("lang", config.defaults.language);
   url.searchParams.set("timezone", config.defaults.timezone);
   return url;
+}
+
+function buildProviderHeaders(config: FootballNewsConfig): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/json"
+  };
+  if (config.apiKey.trim() && config.provider !== "gnews") {
+    headers[config.keyHeader] = config.apiKey.trim();
+  }
+  return headers;
 }
 
 function buildFixturesUrl(config: FootballNewsConfig): URL {
@@ -519,12 +652,7 @@ async function fetchProviderNews(config: FootballNewsConfig): Promise<{
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.polling.timeoutMs);
 
-  const headers: Record<string, string> = {
-    Accept: "application/json"
-  };
-  if (config.apiKey.trim()) {
-    headers[config.keyHeader] = config.apiKey.trim();
-  }
+  const headers = buildProviderHeaders(config);
 
   let response: Response;
   try {
@@ -569,12 +697,7 @@ async function fetchProviderFixtures(config: FootballNewsConfig): Promise<{
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.polling.timeoutMs);
 
-  const headers: Record<string, string> = {
-    Accept: "application/json"
-  };
-  if (config.apiKey.trim()) {
-    headers[config.keyHeader] = config.apiKey.trim();
-  }
+  const headers = buildProviderHeaders(config);
 
   let response: Response;
   try {
@@ -608,6 +731,105 @@ async function fetchProviderFixtures(config: FootballNewsConfig): Promise<{
     items: [...deduped.values()],
     fetched: records.length
   };
+}
+
+async function translateWithGoogle(
+  app: FastifyInstance,
+  texts: string[],
+  targetLanguage: AppHotSignalLanguage
+): Promise<string[] | null> {
+  const apiKey = app.appConfig.googleTranslateApiKey.trim();
+  if (!apiKey || texts.length === 0) return null;
+
+  const body = new URLSearchParams();
+  body.set("source", "en");
+  body.set("target", toGoogleTargetLanguage(targetLanguage));
+  body.set("format", "text");
+  for (const text of texts) {
+    body.append("q", text);
+  }
+
+  const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded;charset=UTF-8"
+    },
+    body
+  });
+
+  if (!response.ok) {
+    const text = (await response.text()).slice(0, 400);
+    throw new Error(`Google Translate request failed (${response.status}): ${text || "no message"}`);
+  }
+
+  const payload = (await response.json()) as {
+    data?: { translations?: Array<{ translatedText?: string }> };
+  };
+  const translations = payload.data?.translations ?? [];
+  if (translations.length !== texts.length) {
+    throw new Error("Google Translate returned an unexpected translation count");
+  }
+
+  return translations.map((item, index) => clampSummary(item.translatedText ?? texts[index], 190));
+}
+
+async function buildLocalizedNewsItems(
+  app: FastifyInstance,
+  items: NormalizedNewsItem[]
+): Promise<{ items: NormalizedNewsItem[]; warnings: string[] }> {
+  const warnings: string[] = [];
+  const baseItems = items.map((item) => ({
+    ...item,
+    language: normalizeAppHotSignalLanguage(item.language)
+  }));
+  if (!app.appConfig.googleTranslateApiKey.trim()) {
+    return { items: baseItems, warnings };
+  }
+  const englishItems = baseItems.filter((item) => normalizeAppHotSignalLanguage(item.language) === "en");
+  if (englishItems.length === 0) return { items: baseItems, warnings };
+
+  const localizedItems = [...baseItems];
+  for (const language of APP_HOT_SIGNAL_LANGUAGES) {
+    if (language === "en") continue;
+    try {
+      const translatedTitles = await translateWithGoogle(
+        app,
+        englishItems.map((item) => item.title),
+        language
+      );
+      const translatedSummaries = await translateWithGoogle(
+        app,
+        englishItems.map((item) => item.summary ?? ""),
+        language
+      );
+      if (!translatedTitles || !translatedSummaries) {
+        warnings.push(`translation_skipped_${language}`);
+        continue;
+      }
+
+      englishItems.forEach((item, index) => {
+        localizedItems.push({
+          ...item,
+          providerItemId: `${item.providerItemId}:${language}`,
+          title: clampSummary(translatedTitles[index] ?? item.title, 180),
+          summary: clampSummary(translatedSummaries[index] ?? item.summary ?? "", 190),
+          language,
+          rawPayload: {
+            ...item.rawPayload,
+            translatedFromLanguage: "en",
+            translatedTargetLanguage: language,
+            canonicalProviderItemId: item.providerItemId
+          }
+        });
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `translation_failed_${language}`;
+      warnings.push(`${language}:${message}`);
+      app.log.warn({ err: error, language }, "Hot signal translation failed");
+    }
+  }
+
+  return { items: localizedItems, warnings };
 }
 
 async function upsertNewsItems(app: FastifyInstance, config: FootballNewsConfig, items: NormalizedNewsItem[]) {
@@ -788,7 +1010,9 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
         const newsFetch = await fetchProviderNews(config);
         newsRequestUrl = newsFetch.requestUrl;
         newsFetched = newsFetch.fetched;
-        newsStored = await upsertNewsItems(app, config, newsFetch.items);
+        const localizedNews = await buildLocalizedNewsItems(app, newsFetch.items);
+        warnings.push(...localizedNews.warnings);
+        newsStored = await upsertNewsItems(app, config, localizedNews.items);
       } catch (newsError) {
         const msg = newsError instanceof Error ? newsError.message : "News sync failed";
         warnings.push(msg);
@@ -920,8 +1144,9 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
     const q = appNewsQuerySchema.parse(request.query);
     const from = toDateOrUndefined(q.from);
     const to = toDateOrUndefined(q.to);
+    const requestedLanguage = q.language ? normalizeAppHotSignalLanguage(q.language) : undefined;
     const where = {
-      ...(q.language ? { language: q.language } : {}),
+      ...(requestedLanguage ? { language: requestedLanguage } : {}),
       ...(q.competition ? { competition: q.competition } : {}),
       ...(q.q
         ? {
@@ -941,28 +1166,48 @@ export const newsRoutes: FastifyPluginAsync = async (app) => {
         : {})
     };
 
-    const [items, total] = await Promise.all([
+    const select = {
+      id: true,
+      provider: true,
+      title: true,
+      summary: true,
+      url: true,
+      imageUrl: true,
+      sourceName: true,
+      language: true,
+      competition: true,
+      publishedAt: true,
+      createdAt: true
+    } as const;
+
+    let [items, total] = await Promise.all([
       app.prisma.newsItem.findMany({
         where,
         orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
         take: q.limit,
         skip: q.offset,
-        select: {
-          id: true,
-          provider: true,
-          title: true,
-          summary: true,
-          url: true,
-          imageUrl: true,
-          sourceName: true,
-          language: true,
-          competition: true,
-          publishedAt: true,
-          createdAt: true
-        }
+        select
       }),
       app.prisma.newsItem.count({ where })
     ]);
+
+    if (requestedLanguage && requestedLanguage !== "en" && items.length === 0) {
+      const fallbackWhere = {
+        ...where,
+        language: "en"
+      };
+      [items, total] = await Promise.all([
+        app.prisma.newsItem.findMany({
+          where: fallbackWhere,
+          orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+          take: q.limit,
+          skip: q.offset,
+          select
+        }),
+        app.prisma.newsItem.count({ where: fallbackWhere })
+      ]);
+    }
+
     return { items, total };
   });
 
