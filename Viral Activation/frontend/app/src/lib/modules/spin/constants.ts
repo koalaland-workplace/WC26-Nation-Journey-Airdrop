@@ -3,13 +3,13 @@ import type { SpinBoosts, SpinEconomy, SpinRewardId, SpinState } from "./types";
 export const MAX_DAILY_SPIN_CAP = 10;
 
 export const SPIN_SEGMENT_ORDER: SpinRewardId[] = [
+  "k50",
   "k100",
-  "k200",
   "nothing",
+  "k200",
   "q2x",
   "r3x",
-  "ticket",
-  "k50"
+  "ticket"
 ];
 
 export const DEFAULT_SPIN_STATE: SpinState = {
