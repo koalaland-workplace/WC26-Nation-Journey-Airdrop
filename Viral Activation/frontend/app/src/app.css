@@ -3308,6 +3308,8 @@ a {
 }
 
 .ref-invite-link {
+  width: 100%;
+  min-height: 48px;
   background: var(--bg3);
   border: 1px solid var(--br);
   border-radius: 9px;
@@ -3317,6 +3319,10 @@ a {
   line-height: 1.4;
   color: var(--c-blue);
   word-break: break-all;
+  resize: none;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .ref-copy-btn {

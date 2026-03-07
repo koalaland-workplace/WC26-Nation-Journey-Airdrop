@@ -16,6 +16,7 @@
   let flashMessage = "";
   let flashTimer: ReturnType<typeof setTimeout> | null = null;
   let initSessionToken = "";
+  let inviteLinkField: HTMLTextAreaElement | null = null;
 
   $: sessionId = $sessionStore.sessionId;
   $: {
@@ -113,20 +114,40 @@
     return copied;
   }
 
+  function copyFromInviteField(): boolean {
+    if (!inviteLinkField) return false;
+    try {
+      inviteLinkField.focus();
+      inviteLinkField.select();
+      inviteLinkField.setSelectionRange(0, inviteLinkField.value.length);
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    }
+  }
+
+  function focusInviteFieldForManualCopy(): void {
+    if (!inviteLinkField) return;
+    inviteLinkField.focus();
+    inviteLinkField.select();
+    inviteLinkField.setSelectionRange(0, inviteLinkField.value.length);
+  }
+
   async function copyInviteLink(): Promise<void> {
     if (!inviteLink) {
       showFlash("Invite link is not ready yet.");
       return;
     }
 
-    let copied = false;
+    let copied = copyFromInviteField();
+
     try {
-      if (navigator.clipboard?.writeText) {
+      if (!copied && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(inviteLink);
         copied = true;
       }
     } catch {
-      copied = false;
+      copied = copied || false;
     }
 
     if (!copied) {
@@ -138,6 +159,7 @@
       return;
     }
 
+    focusInviteFieldForManualCopy();
     const manual = window.prompt("Copy invite link:", inviteLink);
     if (manual !== null) {
       showFlash("📋 Invite link ready to copy.");
@@ -240,7 +262,14 @@
     </div>
     <div class="ref-invite-wrap">
       <div class="ref-invite-label">Your Invite Link</div>
-      <div class="ref-invite-link" title={inviteLinkDisplay}>{inviteLinkDisplay}</div>
+      <textarea
+        class="ref-invite-link"
+        title={inviteLinkDisplay}
+        bind:this={inviteLinkField}
+        readonly
+        rows="2"
+        value={inviteLinkDisplay}
+      ></textarea>
       <button class="btn b-y ref-copy-btn" type="button" on:click={copyInviteLink} disabled={copyInviteDisabled}>
         COPY INVITE LINK
       </button>
